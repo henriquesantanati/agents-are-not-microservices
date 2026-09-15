@@ -188,11 +188,15 @@ the same replica, and the per-request client's calls name both.
 ### Observability
 
 Theory. A trace crosses the agent boundary into an MCP tool call, because SEP-414 and
-the OpenTelemetry MCP conventions define where the context travels. It does not cross an
-A2A delegation. The A2A specification names tracing only as a design goal, the Python
-SDK's client transports inject no trace context, and two open proposals on the A2A
-repository, #2103 and #2026, say the trace breaks at each delegation. Any propagation
-over A2A today is the application's own work. Every span can be OK and
+the OpenTelemetry MCP conventions define where the context travels. The A2A protocol
+carries no trace context. The specification names tracing only as a design goal, the
+Python SDK's client transports inject nothing, and two open proposals on the A2A
+repository, #2103 and #2026, say the trace breaks at each delegation. Per-request HTTP
+instrumentation on client and server does carry `traceparent` by header, because A2A is
+JSON-RPC over one HTTP POST per message, and the stub uses none, which the README says.
+That header stops helping once the message outlives the request, in streaming, in a task
+resumed by a later request, and over gRPC, which is why both proposals put the context in
+the message itself. Every span can be OK and
 the answer wrong, and nothing in the GenAI conventions puts a quality signal on a span.
 A `gen_ai.evaluation.result` event attached to the span after the fact carries one.
 And a span is only exported once it ends. The batching processor holds finished spans
@@ -203,6 +207,9 @@ ended.
 
 Lab. Stub agent, stub MCP server and stub A2A specialist with the OpenTelemetry SDK,
 exporting to a file on a hostPath volume, so the file outlives the pod that wrote it.
+On `kind` a hostPath lives inside the node container, so the cluster config in
+`00-setup.sh` carries an `extraMounts` entry that maps it to a directory on the laptop,
+and the scripts and CI read it from there.
 The agent carries trace context in `params._meta` as the OpenTelemetry MCP conventions
 define, and the server extracts it from there as the remote parent. HTTP headers alone
 are not enough, because the conventions say header propagation covers the request and
@@ -210,10 +217,11 @@ not the individual MCP messages. The agent also delegates one step to the specia
 over A2A. Break has three parts. The green trace with the wrong answer. The specialist's
 spans under a second trace id, because nothing carried the context across the JSON-RPC
 hop. And a pod deleted mid-task whose trace never reaches the file. Fix runs the
-evaluator, injects `traceparent` into the A2A request and extracts it in the
-specialist, with the README saying this is our code and the protocol has nothing here
-yet, and adds a SIGTERM handler that ends the open span with an event recording the
-interruption and calls `force_flush` before exit. The README says SIGKILL still loses
+evaluator, injects `traceparent` into the A2A message where #2103 and #2026 propose,
+`message.metadata` under an extension URI, as well as the HTTP header, and extracts it
+in the specialist. The README says this is our code following an open proposal, and
+that the protocol has nothing normative here yet. Fix also adds a SIGTERM handler that
+ends the open span with an event recording the interruption and calls `force_flush` before exit. The README says SIGKILL still loses
 whatever the batch delay was holding, and that the termination grace period must leave
 room for the flush.
 
