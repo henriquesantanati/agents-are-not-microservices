@@ -37,10 +37,11 @@ agents, not about serving models, so nothing here serves one.
 One Python file per lab, standard library only, no framework. It exists so the reader
 sees exactly what the slide shows and nothing else.
 
-Capabilities by pillar. Probes, hold a task and answer `/health` and `/ready`, in four
-server modes. Scaling, one task fans out into many calls to a fixed-capacity fake
-dependency, with an optional per-agent concurrency cap. Disruption, run a 90 step
-chain, checkpoint on SIGTERM or after every step, resume from the checkpoint.
+Capabilities by pillar. Probes, hold a task and answer `/health` and `/ready`, in two
+server modes, async and blocking. Scaling, one task fans out into many calls to a
+fixed-capacity fake dependency, and both publish their own metrics. Disruption, run a 90 step
+chain, checkpoint when asked over HTTP, on SIGTERM, or after every step, and resume
+from the checkpoint.
 Communication, JSON-RPC server in stateless, local-handle and A2A task modes.
 Observability, emit OpenTelemetry spans and an evaluation event.
 
@@ -92,23 +93,41 @@ Theory. One incoming task turns into many downstream calls, and the agent decide
 many at run time. So the tier that saturates is never the tier the autoscaler watches.
 
 Lab. Stub agent plus a fake dependency, both as Deployments. Fixed values. The
-dependency serves 4 calls at once and takes 200 ms per call, so its capacity is 20
-calls per second. Each task makes 20 downstream calls. Load is 2 tasks per second.
+dependency serves 4 calls at once and takes 200 ms per call, so one replica handles 20
+calls per second. Each task makes 20 downstream calls. Load is 2 tasks per second, so
+40 calls per second, twice what one dependency replica can serve.
 
-Break runs one agent replica with no cap, then scales to three, and shows the
-dependency queue growing in both while agent CPU stays flat. Fix returns to one
-replica and sets the per-agent cap to 4, which is the dependency's concurrency divided
-by one replica, and the queue returns to zero. The README states two things. The cap moves the queue into the agent
-rather than removing it. And a cap set below the dependency's capacity trades
-throughput for nothing, so it has to be sized against the dependency.
-
-Both stubs expose `/metrics` in Prometheus text format. The agent publishes
+Both stubs expose `/metrics` as JSON. The agent publishes
 `agent_downstream_calls_inflight` and the dependency publishes `dependency_queue_depth`.
-Nothing scrapes them. The lab scripts `curl` them and CI reads the same numbers.
+Nothing scrapes them. The lab scripts `curl` them, KEDA reads one of them, and CI reads
+the same numbers.
 
-CI reads `dependency_queue_depth` from the dependency's `/metrics` and asserts it is
-above 20 in both broken states and 0 in the fixed state. It also asserts the agent
-Deployment had 1 then 3 replicas across the two broken observations.
+Break has two observations. First, a HorizontalPodAutoscaler on the agent at 70 percent
+CPU. The dependency queue grows and the HPA never fires, because the agent's CPU stays
+near idle while it waits. Second, the agent is scaled by hand to three replicas and the
+dependency queue does not move, because the load is set by the incoming rate times the
+fan-out and more agents only spread it.
+
+Fix returns the agent to one replica and puts a KEDA ScaledObject on the dependency,
+`metrics-api` trigger, reading `dependency_queue_depth` from the dependency's own
+`/metrics` through its Service, `targetValue` 10, `maxReplicaCount` 3. The dependency
+scales out and the queue falls to KEDA's target. Three replicas, not two, because two
+replicas serve exactly the offered load and a queue at full utilisation does not drain.
+
+The README carries two caveats. KEDA reads the metric through the Service, so each poll
+sees one replica's queue, which is acceptable because the Service spreads the load
+evenly. And a per-agent cap on downstream calls is the backpressure that protects a
+dependency you cannot scale, it moves the queue into the agent rather than removing it,
+and it is not what this lab shows.
+
+`00-setup.sh` installs metrics-server, which `kind` does not ship, with
+`--kubelet-insecure-tls`, and installs KEDA from its Helm chart at a pinned version.
+Without metrics-server the HPA reports unknown and the broken state would be a lie.
+
+CI asserts, in the first broken state, `dependency_queue_depth` above 40 and the HPA's
+`desiredReplicas` at 1 with a numeric CPU reading present. In the second broken state,
+the agent Deployment at 3 replicas and the queue still above 40. In the fixed state, the
+dependency at 2 or more replicas and the queue at or below 10.
 
 ### Disruption
 
@@ -116,9 +135,12 @@ Theory. A PodDisruptionBudget gates the eviction API only. A grace period cannot
 a chain longer than itself. Checkpointing is what saves the work.
 
 Lab. Break shows the eviction refusal, the delete succeeding, and the chain lost at two
-grace values. Fix adds the SIGTERM checkpoint and a periodic checkpoint, then repeats
-the delete and an OOM kill. The README says preStop covers voluntary paths only and
-that the periodic checkpoint bounds the loss on involuntary ones.
+grace values. Fix adds three things and repeats the delete and an OOM kill. A preStop
+hook running `checkpoint.sh`, which calls `POST /checkpoint` on the agent, because a
+script cannot read the process's memory. A SIGTERM handler in the agent that does the
+same, as the fallback when no hook is set. And a periodic checkpoint after every step.
+The README says preStop and SIGTERM are the same voluntary path, that SIGKILL skips
+both, and that only the periodic checkpoint bounds the loss on involuntary paths.
 
 CI asserts the eviction API response code, the replacement pod's first log line, and
 `lastState.terminated.reason` after the OOM.
@@ -155,10 +177,17 @@ Theory. A trace crosses the agent boundary into a tool call. Every span can be O
 the answer wrong, and nothing in the GenAI conventions puts a quality signal on a span.
 A `gen_ai.evaluation.result` event attached to the span after the fact carries one.
 
-Lab. Stub agent and stub MCP server with the SDK, exporting to a file. Break is the
-green trace with the wrong answer. Fix runs the evaluator. CI asserts one trace id
-across both spans and the event's span id. The README warns that HTTP clients may change header case, so trace context
-extraction must be case-insensitive.
+Lab. Stub agent and stub MCP server with the OpenTelemetry SDK, exporting to a file.
+The agent carries trace context in `params._meta` as the OpenTelemetry MCP conventions
+define, and the server extracts it from there as the remote parent. HTTP headers alone
+are not enough, because the conventions say header propagation covers the request and
+not the individual MCP messages. Break is the green trace with the wrong answer. Fix
+runs the evaluator.
+
+CI asserts, in both states, one trace id across the agent span and the tool span, and
+`gen_ai.operation.name` set to `invoke_agent` and `execute_tool` on them. In the fixed
+state it also asserts the evaluation event's span id matches the agent span and that
+every span has status OK or unset.
 
 ## Build order
 
@@ -202,15 +231,18 @@ sentence after saying what the link establishes. After the links, a table of the
 labs and which are ready.
 
 Links that stay. Lin Sun's CNCF post, the Kubernetes agent-sandbox blog, AWS AgentCore
-Runtime, Microsoft kars, which is its Kubernetes agent runtime, and kagent documentation for the opener. The Kubernetes probes
-page. The Kubernetes PodDisruptionBudget page and Karpenter disruption concepts. MCP
-SEP-2575, the A2A task lifecycle, and the A2A Idempotency section. MCP SEP-414, the
-GenAI semantic conventions repository, the OTel GenAI events page for
-`gen_ai.evaluation.result`, and Lin Sun's maintainer credit on the Solo.io page.
+Runtime, Microsoft kars, which is its Kubernetes agent runtime, and kagent documentation for the
+opener. The Kubernetes probes page. The Kubernetes PodDisruptionBudget page and Karpenter disruption concepts. The KEDA
+project page. The MCP specification revision `2026-07-28` changelog for the removal of
+sessions, SEP-2567 for server-minted state handles, SEP-2575 for the handshake, the A2A
+task lifecycle, and the A2A Idempotency section. MCP SEP-414, the OpenTelemetry MCP
+semantic conventions for `params._meta` propagation and span shape, the GenAI semantic
+conventions repository, the OTel GenAI events page for `gen_ai.evaluation.result`, and
+Lin Sun's maintainer credit on the Solo.io page.
 
-The scaling lab README names its own links when the lab lands, and they are copied into
-the main README in the same pull request. The vLLM metrics document and the KEDA scaler
-reference are no longer needed.
+The KEDA `metrics-api` scaler reference lives in the scaling lab README, where its job
+is to stop a reader copying a wrong field. The vLLM metrics document is no longer
+needed.
 
 ## Open risks
 
