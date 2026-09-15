@@ -42,8 +42,10 @@ server modes, async and blocking. Scaling, one task fans out into many calls to 
 fixed-capacity fake dependency, and both publish their own metrics. Disruption, run a 90 step
 chain, checkpoint when asked over HTTP, on SIGTERM, or after every step, and resume
 from the checkpoint.
-Communication, JSON-RPC server in stateless, local-handle and A2A task modes.
-Observability, emit OpenTelemetry spans and an evaluation event.
+Communication, JSON-RPC server in stateless, local-handle and A2A task modes, and a client
+that either keeps one connection open or opens one per request.
+Observability, emit OpenTelemetry spans and an evaluation event, delegate one step to a
+stub specialist over A2A, and end and flush the open span on SIGTERM.
 
 ## Labs
 
@@ -140,7 +142,9 @@ hook running `checkpoint.sh`, which calls `POST /checkpoint` on the agent, becau
 script cannot read the process's memory. A SIGTERM handler in the agent that does the
 same, as the fallback when no hook is set. And a periodic checkpoint after every step.
 The README says preStop and SIGTERM are the same voluntary path, that SIGKILL skips
-both, and that only the periodic checkpoint bounds the loss on involuntary paths.
+both, and that only the periodic checkpoint bounds the loss on involuntary paths. It
+adds one line that the same kill drops the trace that would explain it, and points to
+the observability lab, where the SDK lives, for the demonstration and the fix.
 
 CI asserts the eviction API response code, the replacement pod's first log line, and
 `lastState.terminated.reason` after the OOM.
@@ -161,39 +165,72 @@ A2A Tasks are stateful and need a shared store to survive a replica change. Neit
 protocol makes a retry safe by default, though A2A defines idempotency for some calls
 and MCP defines none.
 
+The client side has its own trap. A client that opens one connection to the MCP
+Service and keeps it for the life of the process is pinned to one replica, because
+kube-proxy balances per connection. New replicas never see its traffic, and a rollout
+of the server pod kills the connection mid-task. A client that opens a connection per
+request pays a handshake each call and has neither problem. Under the stateless
+revision there is no session to lose, so the per-request client costs a round trip and
+nothing else.
+
 Lab. Two-replica stub Deployments behind one Service. Break shows the local-handle
 failure and the A2A not-found. Fix shows the stateless server and the shared store.
-The replay runs in both states.
+The replay runs in both states. The client runs in both modes against the stateless
+server, and the README carries the paragraph above.
 
 CI asserts four things. The stateless sequence returns a JSON-RPC result after hitting
 two different replicas. The local-handle server returns a JSON-RPC error naming the
 second replica. `tasks/get` returns an error with local state and a result with the
 shared store. The side effect log holds two lines without an idempotency key and one
-line with one.
+line with one. A fifth check on the client. The persistent client's calls all name
+the same replica, and the per-request client's calls name both.
 
 ### Observability
 
-Theory. A trace crosses the agent boundary into a tool call. Every span can be OK and
+Theory. A trace crosses the agent boundary into an MCP tool call, because SEP-414 and
+the OpenTelemetry MCP conventions define where the context travels. It does not cross an
+A2A delegation. The A2A specification names tracing only as a design goal, the Python
+SDK's client transports inject no trace context, and two open proposals on the A2A
+repository, #2103 and #2026, say the trace breaks at each delegation. Any propagation
+over A2A today is the application's own work. Every span can be OK and
 the answer wrong, and nothing in the GenAI conventions puts a quality signal on a span.
 A `gen_ai.evaluation.result` event attached to the span after the fact carries one.
+And a span is only exported once it ends. The batching processor holds finished spans
+for up to five seconds by default, the Python SDK flushes them on `atexit`, and Python
+skips `atexit` on a signal it does not handle. A pod killed mid-task loses its buffered
+spans and never exports the span of the task it was running, because that span never
+ended.
 
-Lab. Stub agent and stub MCP server with the OpenTelemetry SDK, exporting to a file.
+Lab. Stub agent, stub MCP server and stub A2A specialist with the OpenTelemetry SDK,
+exporting to a file on a hostPath volume, so the file outlives the pod that wrote it.
 The agent carries trace context in `params._meta` as the OpenTelemetry MCP conventions
 define, and the server extracts it from there as the remote parent. HTTP headers alone
 are not enough, because the conventions say header propagation covers the request and
-not the individual MCP messages. Break is the green trace with the wrong answer. Fix
-runs the evaluator.
+not the individual MCP messages. The agent also delegates one step to the specialist
+over A2A. Break has three parts. The green trace with the wrong answer. The specialist's
+spans under a second trace id, because nothing carried the context across the JSON-RPC
+hop. And a pod deleted mid-task whose trace never reaches the file. Fix runs the
+evaluator, injects `traceparent` into the A2A request and extracts it in the
+specialist, with the README saying this is our code and the protocol has nothing here
+yet, and adds a SIGTERM handler that ends the open span with an event recording the
+interruption and calls `force_flush` before exit. The README says SIGKILL still loses
+whatever the batch delay was holding, and that the termination grace period must leave
+room for the flush.
 
 CI asserts, in both states, one trace id across the agent span and the tool span, and
-`gen_ai.operation.name` set to `invoke_agent` and `execute_tool` on them. In the fixed
-state it also asserts the evaluation event's span id matches the agent span and that
-every span has status OK or unset.
+`gen_ai.operation.name` set to `invoke_agent` and `execute_tool` on them. In the
+broken state it asserts the specialist span carries a different trace id and that the
+deleted pod's trace id is absent from the file. In the fixed
+state it asserts the specialist span carries the agent's trace id, the deleted pod's
+agent span is present with the interruption event, the evaluation event's span id
+matches the agent span, and every span except the interrupted one has status OK or unset.
 
 ## Build order
 
 Probes, scaling, disruption, communication, observability. Probes first because it is
 the reader's entry point. Scaling second because it is the largest build. Communication
-and observability last because they are the smallest.
+next because it is the smallest. Observability last because it now carries three
+break states and depends on the A2A stub from communication.
 
 ## CI
 
@@ -238,7 +275,10 @@ sessions, SEP-2567 for server-minted state handles, SEP-2575 for the handshake, 
 task lifecycle, and the A2A Idempotency section. MCP SEP-414, the OpenTelemetry MCP
 semantic conventions for `params._meta` propagation and span shape, the GenAI semantic
 conventions repository, the OTel GenAI events page for `gen_ai.evaluation.result`, and
-Lin Sun's maintainer credit on the Solo.io page.
+Lin Sun's maintainer credit on the Solo.io page. For the A2A gap, the A2A specification's
+design goals, A2A issues #2103 and #2026, and the `a2a-python` client transport
+sources. For the termination loss, the OpenTelemetry trace SDK specification's batching
+processor section and the Python `atexit` documentation note on signals.
 
 The KEDA `metrics-api` scaler reference lives in the scaling lab README, where its job
 is to stop a reader copying a wrong field. The vLLM metrics document is no longer
