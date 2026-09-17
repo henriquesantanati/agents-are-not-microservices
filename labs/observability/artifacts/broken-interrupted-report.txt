@@ -1,0 +1,2 @@
+$ python3 agent/agent.py report .anm/otel broken-2    # 2026-09-15T15:05:14Z
+{"agent": null, "tool_client": null, "tool_server": null, "a2a_client": null, "specialist": null, "trace_in_file": false, "statuses": [], "evaluations": []}

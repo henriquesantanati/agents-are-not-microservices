@@ -1,0 +1,4 @@
+$ kubectl -n scaling get deployment agent dependency    # 2026-09-17T22:02:36Z
+NAME         READY   UP-TO-DATE   AVAILABLE   AGE
+agent        3/3     3            3           69s
+dependency   1/1     1            1           69s

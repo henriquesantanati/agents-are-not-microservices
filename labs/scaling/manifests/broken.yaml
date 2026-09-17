@@ -1,0 +1,103 @@
+# The agent is autoscaled on CPU. The dependency it waits on is not scaled at all.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: agent }
+  template:
+    metadata:
+      labels: { app: agent }
+    spec:
+      containers:
+        - name: agent
+          image: anm-scaling:dev
+          imagePullPolicy: Never
+          env:
+            - { name: MODE, value: agent }
+            - { name: FANOUT, value: "20" }
+            - { name: DEPENDENCY_URL, value: "http://dependency" }
+          ports:
+            - containerPort: 8080
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent
+spec:
+  selector: { app: agent }
+  ports:
+    - { port: 80, targetPort: 8080 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dependency
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: dependency }
+  template:
+    metadata:
+      labels: { app: dependency }
+    spec:
+      containers:
+        - name: dependency
+          image: anm-scaling:dev
+          imagePullPolicy: Never
+          env:
+            - { name: MODE, value: dependency }
+            - { name: CAPACITY, value: "4" }
+            - { name: CALL_SECONDS, value: "0.2" }
+          ports:
+            - containerPort: 8080
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dependency
+spec:
+  selector: { app: dependency }
+  ports:
+    - { port: 80, targetPort: 8080 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadgen
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: loadgen }
+  template:
+    metadata:
+      labels: { app: loadgen }
+    spec:
+      containers:
+        - name: loadgen
+          image: anm-scaling:dev
+          imagePullPolicy: Never
+          env:
+            - { name: MODE, value: load }
+            - { name: RATE, value: "2" }
+            - { name: AGENT_URL, value: "http://agent" }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: agent
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: agent }
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }

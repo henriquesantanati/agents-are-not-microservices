@@ -1,0 +1,53 @@
+name: labs
+
+on:
+  pull_request:
+    paths: ["labs/**", ".github/workflows/labs.yaml"]
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+jobs:
+  changed:
+    runs-on: ubuntu-latest
+    outputs:
+      labs: ${{ steps.pick.outputs.labs }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: pick
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          all='["probes","scaling","disruption","communication","observability"]'
+          if [ "$EVENT" != pull_request ]; then
+            echo "labs=$all" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          changed="$(git diff --name-only "origin/$BASE_REF"...HEAD)"
+          if echo "$changed" | grep -qE '^(labs/lib/|\.github/workflows/labs\.yaml)'; then
+            echo "labs=$all" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          labs="$(echo "$changed" | sed -nE 's#^labs/([a-z]+)/.*#\1#p' | sort -u | python3 -c 'import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')"
+          echo "labs=$labs" >> "$GITHUB_OUTPUT"
+
+  lab:
+    needs: changed
+    if: needs.changed.outputs.labs != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        lab: ${{ fromJSON(needs.changed.outputs.labs) }}
+    env:
+      ANM_RUNTIME: docker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: helm/kind-action@v1
+        with: { install_only: true }
+      - uses: azure/setup-helm@v4
+      - run: labs/${{ matrix.lab }}/00-setup.sh
+      - run: labs/${{ matrix.lab }}/40-verify.sh
+      - if: always()
+        run: labs/${{ matrix.lab }}/99-teardown.sh

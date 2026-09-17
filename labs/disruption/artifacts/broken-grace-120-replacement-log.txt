@@ -1,0 +1,2 @@
+$ kubectl -n disruption logs agent-0 -c agent    # 2026-09-15T15:02:22Z
+start chain at step 0 of 90, checkpointing disabled

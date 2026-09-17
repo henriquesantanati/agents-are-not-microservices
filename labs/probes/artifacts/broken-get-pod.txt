@@ -1,0 +1,3 @@
+$ kubectl -n probes get pod agent-async-7cdd7669db-wwfqc    # 2026-09-15T14:53:41Z
+NAME                           READY   STATUS    RESTARTS   AGE
+agent-async-7cdd7669db-wwfqc   1/1     Running   0          63s
