@@ -17,10 +17,11 @@ Commit with a personal identity, never an employer one.
 
 ## Pull requests
 
-One reviewable unit per pull request, roughly 100 to 300 changed lines. Prose and code go
-in separate pull requests.
+A lab lands whole, in one pull request of 400 to 700 lines: stub, manifests, scripts,
+artifacts and its README. Everything else is one reviewable unit per pull request, 100 to
+300 lines, and prose that is not tied to one lab lands on its own.
 
-Lanay reviews by reading, so a lab pull request has to bring the evidence with it: paste the
+The reviewer reads, so a lab pull request has to bring the evidence with it: paste the
 output of `10-break.sh` and `30-fix.sh` into the body and link the CI run.
 
 ## Labs

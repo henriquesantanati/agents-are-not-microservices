@@ -1,0 +1,9 @@
+# The default rules, plus one exception. Artifacts are captured terminal output and keep
+# holding generated hex ids, such as the idempotency keys in the communication lab, which
+# the generic API key rule reads as secrets.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "captured terminal output under labs/*/artifacts"
+paths = ['''labs/[^/]+/artifacts/''']

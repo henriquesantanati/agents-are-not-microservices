@@ -10,6 +10,7 @@ uid_of() { k -n "$NS" get pod "$POD" -o jsonpath='{.metadata.uid}' 2>/dev/null; 
 step_of() { k -n "$NS" exec "$POD" -c agent -- python3 /app/agent.py status; }
 first_log_line() { k -n "$NS" logs "$POD" -c agent 2>/dev/null | head -n 1; }
 restarts_of() { k -n "$NS" get pod "$POD" -o jsonpath='{.status.containerStatuses[0].restartCount}'; }
+started_at() { k -n "$NS" get pod "$POD" -o jsonpath='{.status.containerStatuses[0].state.running.startedAt}'; }
 
 step_at_least() { local s; s="$(step_of 2>/dev/null)"; (( ${s:-0} >= $1 )); }
 running() { [[ "$(k -n "$NS" get pod "$POD" -o jsonpath='{.status.containerStatuses[0].state.running.startedAt}' 2>/dev/null)" != "" ]]; }
@@ -104,4 +105,18 @@ observe_fixed() {
   expect "restarted container resumes from the periodic checkpoint" "$(start_step)" -ge "$step"
   check "the killed container never ran preStop or SIGTERM" 0 \
     "$(k -n "$NS" logs "$POD" -c agent --previous | grep -cE 'reason=(prestop|sigterm)' || true)"
+
+  # Why the lab kills with memory and not with kill -9. pid_namespaces(7) only delivers
+  # SIGKILL to a namespace init from an ancestor namespace, so from inside the container
+  # the command reports success and the process carries on.
+  local restarts started_at
+  restarts="$(restarts_of)"
+  started_at="$(started_at)"
+  step="$(step_of)"
+  check "kill -9 1 from inside the container reports success" "kill exit=0" \
+    "$(k -n "$NS" exec "$POD" -c agent -- sh -c 'kill -9 1; echo "kill exit=$?"' 2>&1 | tail -n 1)"
+  wait_for 30 step_at_least $((step + 2)) || true
+  expect "the chain keeps going after kill -9 1" "$(step_of)" -ge $((step + 2))
+  check "the restart count did not move" "$restarts" "$(restarts_of)"
+  check "the container is the same one" "$started_at" "$(started_at)"
 }

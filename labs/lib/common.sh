@@ -85,6 +85,21 @@ ensure_cluster() {
     --config labs/kind-config.yaml)
 }
 
+# Proves the node's /var/anm/otel is the laptop's .anm/otel, by writing a file on one side
+# and reading it on the other. A cluster created without labs/kind-config.yaml has no
+# such mount, and the observability lab would otherwise fail later on an empty directory.
+ensure_otel_mount() {
+  local probe="mount-check-$$"
+  mkdir -p "$OTEL_HOST_DIR"
+  "$RUNTIME" exec "${CLUSTER_NAME}-control-plane" touch "/var/anm/otel/$probe" 2>/dev/null
+  if [[ ! -f "$OTEL_HOST_DIR/$probe" ]]; then
+    die "cluster $CLUSTER_NAME has no /var/anm/otel mount; recreate it from the repository root: kind delete cluster --name $CLUSTER_NAME, then rerun this script"
+  fi
+  rm -f "$OTEL_HOST_DIR/$probe"
+  # The stubs run as nobody, and the directory is whoever created it on the laptop.
+  chmod 0777 "$OTEL_HOST_DIR"
+}
+
 ensure_namespace() {
   k create namespace "$1" --dry-run=client -o yaml | k apply -f - >/dev/null
 }

@@ -80,8 +80,8 @@ where the OpenTelemetry SDK lives, and it demonstrates both the loss and the fix
 The lab sets a memory limit and asks the stub to allocate past it. Do not reach for
 `kubectl exec -- kill -9 1` instead: the command reports success and nothing happens, since
 [pid_namespaces(7)](https://man7.org/linux/man-pages/man7/pid_namespaces.7.html) only
-delivers SIGKILL to a namespace init from an ancestor namespace. The lab runs it once so
-you can watch the restart count not move.
+delivers SIGKILL to a namespace init from an ancestor namespace. `30-fix.sh` runs it once,
+after the OOM kill, and asserts that the chain keeps going and the restart count stays put.
 
 ## Karpenter
 
