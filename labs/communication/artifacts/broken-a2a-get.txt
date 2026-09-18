@@ -1,0 +1,2 @@
+$ kubectl -n communication exec deploy/client -- python3 /app/agent.py a2a-get    # 2026-09-15T15:03:27Z
+{"replicas": ["a2a-7c45fd89fb-bng7p", "a2a-7c45fd89fb-vk6mj"], "outcome": "error", "response": {"jsonrpc": "2.0", "id": 2, "error": {"code": -32001, "message": "Task not found on replica a2a-7c45fd89fb-vk6mj", "data": {"replica": "a2a-7c45fd89fb-vk6mj"}}}}

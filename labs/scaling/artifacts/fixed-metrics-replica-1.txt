@@ -1,0 +1,2 @@
+$ kubectl -n scaling exec dependency-56f58b65f9-7fxxx -- python3 /app/agent.py get http://127.0.0.1:8080/metrics    # 2026-09-17T22:04:10Z
+{"pod": "dependency-56f58b65f9-7fxxx", "dependency_queue_depth": 0, "dependency_calls_inflight": 3, "dependency_calls_served": 586}

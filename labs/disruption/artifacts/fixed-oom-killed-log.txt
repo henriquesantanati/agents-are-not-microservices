@@ -1,0 +1,4 @@
+$ kubectl -n disruption logs agent-0 -c agent --previous --tail=3    # 2026-09-15T15:02:49Z
+checkpoint step=7 reason=periodic
+checkpoint step=8 reason=periodic
+checkpoint step=9 reason=periodic

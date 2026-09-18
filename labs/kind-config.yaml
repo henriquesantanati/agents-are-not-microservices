@@ -1,0 +1,10 @@
+# Cluster config for the manual walkthroughs. Run kind from the repository root.
+# The observability lab exports spans to a hostPath. On kind that path lives inside the
+# node container, so this maps it to .anm/otel on the laptop.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraMounts:
+      - hostPath: .anm/otel
+        containerPath: /var/anm/otel

@@ -1,0 +1,5 @@
+$ kubectl -n scaling top pod    # 2026-09-17T22:02:00Z
+NAME                          CPU(cores)   MEMORY(bytes)   
+agent-6bc6b48686-d8klv        32m          45Mi            
+dependency-56f58b65f9-5fmr4   43m          27Mi            
+loadgen-5cbc467545-s6dxz      4m           17Mi            

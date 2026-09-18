@@ -1,0 +1,3 @@
+$ kubectl -n scaling get hpa agent    # 2026-09-17T22:02:00Z
+NAME    REFERENCE          TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+agent   Deployment/agent   cpu: 32%/70%   1         10        1          33s

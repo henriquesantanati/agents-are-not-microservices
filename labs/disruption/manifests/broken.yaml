@@ -1,0 +1,47 @@
+# A PodDisruptionBudget and a long grace period. The chain lives in memory.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: agent
+spec:
+  maxUnavailable: 0
+  selector:
+    matchLabels: { app: agent }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: agent
+spec:
+  serviceName: agent
+  replicas: 1
+  selector:
+    matchLabels: { app: agent }
+  template:
+    metadata:
+      labels: { app: agent }
+    spec:
+      terminationGracePeriodSeconds: 120
+      securityContext: { fsGroup: 65534 }
+      containers:
+        - name: agent
+          image: anm-disruption:dev
+          imagePullPolicy: Never
+          env:
+            - { name: CHECKPOINT, value: none }
+            - { name: STEPS, value: "90" }
+            - { name: STEP_SECONDS, value: "2" }
+          ports:
+            - containerPort: 8080
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 128Mi }
+          volumeMounts:
+            - { name: state, mountPath: /state }
+  volumeClaimTemplates:
+    - metadata:
+        name: state
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests: { storage: 64Mi }

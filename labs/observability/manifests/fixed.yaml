@@ -1,0 +1,110 @@
+# The same stubs with trace context injected into the A2A message and extracted by the
+# specialist, and a SIGTERM handler that ends the open span and flushes. The only change
+# from broken.yaml is the three env values.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: agent }
+  template:
+    metadata:
+      labels: { app: agent }
+    spec:
+      containers:
+        - name: agent
+          image: anm-observability:dev
+          imagePullPolicy: Never
+          env:
+            - { name: MODE, value: agent }
+            - { name: A2A_TRACE, value: "on" }
+            - { name: SIGTERM_FLUSH, value: "on" }
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet: { path: /health, port: 8080 }
+            periodSeconds: 2
+          volumeMounts:
+            - { name: otel, mountPath: /otel }
+      volumes:
+        - name: otel
+          hostPath: { path: /var/anm/otel, type: Directory }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: mcp }
+  template:
+    metadata:
+      labels: { app: mcp }
+    spec:
+      containers:
+        - name: mcp
+          image: anm-observability:dev
+          imagePullPolicy: Never
+          env:
+            - { name: MODE, value: mcp }
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet: { path: /health, port: 8080 }
+            periodSeconds: 2
+          volumeMounts:
+            - { name: otel, mountPath: /otel }
+      volumes:
+        - name: otel
+          hostPath: { path: /var/anm/otel, type: Directory }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp
+spec:
+  selector: { app: mcp }
+  ports:
+    - { port: 80, targetPort: 8080 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: specialist
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: specialist }
+  template:
+    metadata:
+      labels: { app: specialist }
+    spec:
+      containers:
+        - name: specialist
+          image: anm-observability:dev
+          imagePullPolicy: Never
+          env:
+            - { name: MODE, value: specialist }
+            - { name: A2A_TRACE, value: "on" }
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet: { path: /health, port: 8080 }
+            periodSeconds: 2
+          volumeMounts:
+            - { name: otel, mountPath: /otel }
+      volumes:
+        - name: otel
+          hostPath: { path: /var/anm/otel, type: Directory }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: specialist
+spec:
+  selector: { app: specialist }
+  ports:
+    - { port: 80, targetPort: 8080 }

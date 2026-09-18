@@ -1,0 +1,73 @@
+# One probe per question. Probe blocks match slide 8. The only change from broken.yaml
+# is the readiness path.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-async
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: agent-async }
+  template:
+    metadata:
+      labels: { app: agent-async }
+    spec:
+      containers:
+        - name: agent
+          image: anm-probes:dev
+          imagePullPolicy: Never
+          env:
+            - { name: MODE, value: async }
+            - { name: MAX_TASKS, value: "1" }
+          ports:
+            - containerPort: 8080
+          livenessProbe:          # is the process alive?
+            httpGet: { path: /health, port: 8080 }
+          readinessProbe:         # can it take another task?
+            httpGet: { path: /ready, port: 8080 }
+            # fails: pulled from the Service, no restart. passes: back in.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-async
+spec:
+  selector: { app: agent-async }
+  ports:
+    - { port: 80, targetPort: 8080 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-blocking
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: agent-blocking }
+  template:
+    metadata:
+      labels: { app: agent-blocking }
+    spec:
+      containers:
+        - name: agent
+          image: anm-probes:dev
+          imagePullPolicy: Never
+          env:
+            - { name: MODE, value: blocking }
+            - { name: MAX_TASKS, value: "1" }
+          ports:
+            - containerPort: 8080
+          livenessProbe:          # is the process alive?
+            httpGet: { path: /health, port: 8080 }
+          readinessProbe:         # can it take another task?
+            httpGet: { path: /ready, port: 8080 }
+            # fails: pulled from the Service, no restart. passes: back in.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-blocking
+spec:
+  selector: { app: agent-blocking }
+  ports:
+    - { port: 80, targetPort: 8080 }

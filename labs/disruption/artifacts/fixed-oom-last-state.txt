@@ -1,0 +1,2 @@
+$ kubectl -n disruption get pod agent-0 -o jsonpath={.status.containerStatuses[0].lastState.terminated}{"\n"}    # 2026-09-15T15:02:49Z
+{"containerID":"containerd://95244d744977dddcc2a2dfd24003cd7e557a59d6a9fb8efa4d42e43b9a227a0a","exitCode":137,"finishedAt":"2026-09-15T15:02:47Z","reason":"OOMKilled","startedAt":"2026-09-15T15:02:39Z"}
