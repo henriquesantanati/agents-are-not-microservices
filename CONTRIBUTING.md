@@ -37,5 +37,6 @@ the fix says nothing about whether the problem still reproduces.
 `artifacts/` is written by `10-break.sh` and `30-fix.sh` only, which is why `40-verify.sh`
 sets `ANM_CAPTURE=0`.
 
-Docker and Podman both work. With both installed the scripts pick Podman; `ANM_RUNTIME=docker`
-overrides that.
+Docker, Podman and Finch all work. The scripts pick the first one that answers, Podman,
+then Docker, then Finch, and `ANM_RUNTIME` overrides that. kind drives Finch through its
+nerdctl provider, which kind still labels experimental; the five labs pass on it.
