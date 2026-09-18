@@ -2,9 +2,8 @@
 
 Companion repository for "Agents Are Not Microservices: Operating Autonomous AI on
 Kubernetes", Cloud Native AI + Inference Day, KubeCon NA 2026, Monday 9 November 2026.
-Speakers Henrique Santana and Lanay Marques.
 
-Decided on 2026-09-14. Everything here is a decision.
+Everything here is a decision.
 This file is the source of truth for the repository. Changes to it are pull requests.
 
 ## The rule
@@ -18,7 +17,8 @@ gives a pattern.
 
 Observability covers OpenTelemetry traces and the GenAI semantic conventions, which
 are OpenTelemetry's agreed attribute names for AI systems. It is not named in the
-proposal. We keep it because it is Lanay's pillar.
+proposal. It stays because a trace is the only way to see the other four pillars fail in
+production.
 
 ## Repository
 
@@ -194,7 +194,7 @@ server, and the README carries the paragraph above.
 The stubs speak A2A v1.0, so the methods are `SendMessage` and `GetTask`, the role is
 `ROLE_USER` and the state is `TASK_STATE_WORKING`. MCP requests carry
 `io.modelcontextprotocol/protocolVersion` in `_meta` and results carry `resultType`, which
-the `2026-07-28` revision requires now that there is no handshake.
+the `2026-07-28` revision requires, because there is no handshake.
 
 CI asserts four things. The stateless sequence returns a JSON-RPC result after hitting
 two different replicas. The local-handle server returns a JSON-RPC error naming the
@@ -258,12 +258,12 @@ matches the agent span, and every span except the interrupted one has status OK 
 
 Probes, scaling, disruption, communication, observability. Probes first because it is
 the reader's entry point. Scaling second because it is the largest build. Communication
-next because it is the smallest. Observability last because it now carries three
+next because it is the smallest. Observability last because it carries three
 break states and depends on the A2A stub from communication.
 
 ## CI
 
-GitHub Actions on `kind`. Every lab is small now, so the private repository runner at
+GitHub Actions on `kind`. Every lab is small, so the private repository runner at
 2 vCPU and 8GB fits all of them. No budget script is needed.
 
 Both states are asserted. A workflow that only proves the fix says nothing about
@@ -286,23 +286,21 @@ repository exposes its whole history.
 
 ## Collaboration
 
-The first drop lands as one pull request: the harness, the five labs, CI and the prose that
-describes them, around 3700 lines. Splitting it would mean reviewing scripts before the
-thing they run exists, and reviewing a lab before the harness it stands on. Read one lab
-end to end, then read the other four as differences from it, because they are the same
-shape on purpose.
+A first drop, the harness with the five labs, CI and the prose that describes them, lands
+as one pull request of around 3700 lines. Split, it would ask for scripts to be reviewed
+before the thing they run exists, and for a lab to be reviewed before the harness it stands
+on. Read one lab end to end, then the other four as differences from it, because they are
+the same shape on purpose.
 
-After that, one pull request per lab. A lab lands whole: stub, manifests, scripts,
-artifacts and the README that explains them. None of those parts can be reviewed without
-the others, and a lab runs between 400 and 700 lines, so the old ceiling of 300 does not
-apply to it.
+A lab lands whole, as one pull request: stub, manifests, scripts, artifacts and the README
+that explains them. None of those parts can be reviewed without the others. A lab runs 400
+to 700 lines.
 
-Everything else keeps the old rule: one reviewable unit per pull request, roughly 100 to
-300 changed lines, and prose that is not tied to one lab, the repository README and
-`CONTRIBUTING.md`, lands on its own.
+Everything else is one reviewable unit per pull request, 100 to 300 changed lines. Prose
+that is not tied to one lab, the repository README and `CONTRIBUTING.md`, lands on its own.
 
-Lanay reviews by reading, so every lab PR body carries a pasted transcript of the break and
-the fix and a link to the CI run.
+The reviewer reads, so every lab PR body carries a pasted transcript of the break and the
+fix and a link to the CI run.
 
 ## README and links
 
@@ -310,7 +308,7 @@ Links sit inline under pillar headings. Each link backs one claim. Link first, o
 sentence after saying what the link establishes. After the links, a table of the five
 labs and which are ready.
 
-Links that stay. Lin Sun's CNCF post, the Kubernetes agent-sandbox blog, AWS AgentCore
+Links. Lin Sun's CNCF post, the Kubernetes agent-sandbox blog, AWS AgentCore
 Runtime, Microsoft kars, which is its Kubernetes agent runtime, and kagent documentation for the
 opener. The Kubernetes probes page. The Kubernetes PodDisruptionBudget page and Karpenter disruption concepts. The KEDA
 project page. The MCP specification revision `2026-07-28` changelog for the removal of
@@ -324,14 +322,12 @@ sources. For the termination loss, the OpenTelemetry trace SDK specification's b
 processor section and the Python `atexit` documentation note on signals.
 
 The KEDA `metrics-api` scaler reference lives in the scaling lab README, where its job
-is to stop a reader copying a wrong field. The vLLM metrics document is no longer
-needed.
+is to stop a reader copying a wrong field.
 
 ## Open risks
 
 All five labs run end to end on `kind` through their own scripts, on Kubernetes 1.37 with
-rootless podman. Three things are still unproven. The hooks have never run in full, because
-`gitleaks` is not installed on the machine that built the labs. CI has never run, because
-nothing is pushed yet. And the agent's CPU in the scaling lab reads between 25 and 55
-percent of its request depending on the machine, so the HPA not firing has less margin than
-the slide implies.
+rootless podman. Three things are unproven. The hooks have not run in full, because no
+machine that runs the labs has `gitleaks` installed. CI has not run. And the agent's CPU in
+the scaling lab reads between 25 and 55 percent of its request depending on the machine,
+against a 70 percent target.
