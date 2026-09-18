@@ -59,11 +59,12 @@ labs/<pillar>/
   README.md          the theory, the commands, what to look for
   lib.sh             the lab's own helpers, and the broken and fixed observations
   00-setup.sh        checks prerequisites, creates cluster or namespace
-  10-break.sh        applies the broken manifest, prints the symptom
-  20-observe.sh      the kubectl commands that show why
-  30-fix.sh          applies the fixed manifest
-  40-verify.sh       asserts both states, exits non-zero if either fails
+  10-break.sh        applies the broken manifest, shows the symptom, asserts it
+  20-observe.sh      the kubectl commands that show why, one phrase under each block
+  30-fix.sh          applies the fixed manifest, shows the change, asserts it
+  40-verify.sh       checks the fixed state as deployed, no redeploy
   99-teardown.sh
+  run.sh             10, 20, 30, 40 in order, stops at the first failure; what CI runs
   agent/             the stub and its Dockerfile
   manifests/broken.yaml
   manifests/fixed.yaml
@@ -71,11 +72,12 @@ labs/<pillar>/
 ```
 
 The six numbered scripts stay thin. The observations and the assertions live in `lib.sh`,
-so `10-break.sh` and `40-verify.sh` cannot drift apart, and the shared parts live in
+so `10-break.sh` and `30-fix.sh` cannot drift apart, and the shared parts live in
 `labs/lib/common.sh`.
 
 Scripts are idempotent and exit non-zero on failure. CI runs the same files a human
-does.
+does. Every script says what it is doing on `==>` lines and what the output shows on `-->`
+lines, one short phrase per block of output, so the repository reads without the talk.
 
 One `kind` cluster named `anm` serves every lab. Each lab uses its own namespace named
 after the pillar and deletes only that namespace on teardown. `00-setup.sh` creates the

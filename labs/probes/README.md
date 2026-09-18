@@ -1,63 +1,66 @@
 # Probes
 
-Assumption: readiness means the process is up.
+Kubernetes decides whether a pod is alive and whether it can take traffic by calling two
+HTTP endpoints, the liveness probe and the readiness probe. Most manifests point both at
+the same `/health`. For a web service that is fine. For an agent that works on one task
+for minutes, it is wrong twice.
 
-## What breaks
+## The problem
 
-A busy pod answers its probe instantly. That is the whole problem. The probe asks the
-process whether it is alive, the process says yes, and nothing in that exchange knows the
-pod has been chewing on the same task for the last four minutes. Point both probes at
-`/health` and ready ends up meaning alive, so the Service keeps handing work to a pod that
-cannot take it.
+An agent that is busy still answers `/health` with 200. Kubernetes reads that as alive and
+ready, keeps the pod in the Service, and keeps sending it work it cannot take.
 
-Liveness and readiness answer different questions. Is the process alive, and can it take
-another task. A failing readiness probe pulls the pod out of the Service and leaves it
-running; a failing liveness probe kills it. Kubernetes has no idea what capacity means for
-your agent, so `/ready` is yours to write. Here it returns 503 while `inflight >= max_tasks`
-and 200 otherwise.
+An agent that cannot answer while it works fails the liveness probe three times in a row
+and gets restarted. The task it was running is gone.
 
-Longer timeouts, the usual first reaction, answer neither question.
+The two probes answer different questions. Liveness asks whether the process should be
+restarted. Readiness asks whether the pod can take another task. Only you know what "can
+take another task" means for your agent, so `/ready` is yours to write. Here it returns
+503 while a task is running and 200 otherwise.
 
 ## The stub
 
-`agent/agent.py` runs in two modes, and the difference between them is the lab.
-
-In `async` mode each request gets its own thread and the task runs in the background, so
-both endpoints keep answering while the agent works. In `blocking` mode everything shares
-one thread and the task runs inside the request, so nothing answers until it finishes.
-Either way the agent holds one task at a time.
+`agent/agent.py` runs in two modes. In `async` mode the task runs in a background thread
+and both endpoints keep answering while it works. In `blocking` mode the task runs inside
+the request and nothing answers until it finishes. Each pod holds one task at a time. The
+lab runs one pod of each.
 
 ## Run it
 
 ```
 ./00-setup.sh      # creates the anm cluster if it is missing, builds and loads the image
-./10-break.sh      # both probes on /health, then a 90 second task
-./20-observe.sh    # run this while a task is in flight
-./30-fix.sh        # readiness on /ready, then a 90 second task
-./40-verify.sh     # asserts both states, exits non-zero on failure
-./99-teardown.sh   # deletes the probes namespace and leaves the cluster alone
+./10-break.sh      # both probes on /health, then a 90 second task on each pod
+./20-observe.sh    # run it while the task is in flight
+./30-fix.sh        # readiness on /ready, then a 90 second task on each pod
+./40-verify.sh     # checks the fixed state as deployed, exits non-zero on failure
+./99-teardown.sh   # deletes the probes namespace, keeps the cluster
+./run.sh           # 10, 20, 30 and 40 in one go, stops at the first failure
 ```
 
 ## What to look for
 
-With both probes on `/health`, the async pod sits at `1/1 Running 0` with a task in
-flight and its endpoint stays ready. Meanwhile the blocking pod goes `0/1` after about
-forty seconds and restarts after about a minute, because three liveness probes in a row
-timed out. The task it was running is gone.
+`10-break.sh` and `30-fix.sh` start a 90 second task on each pod and print
+`kubectl get pod`. Watch two columns, READY and RESTARTS.
 
-After the fix, the async pod drops to `0/1 Running 0` about twenty five seconds into the
-task, its endpoint turns not ready, and it comes back on its own when the task ends. Zero
-restarts throughout.
+| | async pod | blocking pod |
+|---|---|---|
+| Broken, both probes on `/health` | `1/1` the whole time, `0` restarts. Kubernetes thinks it is free. It is not. | `0/1` after 40 seconds, then `1` restart. The task is lost. |
+| Fixed, readiness on `/ready` | `0/1` while it works, `1/1` when done, `0` restarts. The Service stops sending it work until it can take it. | Still `1` restart. Readiness cannot help a server that cannot answer. |
 
-The blocking pod still restarts in the fixed state, and that is not a bug in the lab.
-Moving readiness to `/ready` only helps a server that can still answer while it works. If
-`/health` is stuck behind the task, the kubelet kills the pod no matter what the readiness
-probe says, and a longer timeout only postpones it until the task outlives that too.
+The fix is the async column. The blocking pod restarts in both states, and that is why it
+is in the lab. A server that blocks while it works has no probe setting that saves it. It
+has to answer while it works.
 
-`artifacts/` holds the exact output behind slides 7 and 8.
+`20-observe.sh` prints the probe config, what `/health` and `/ready` return mid-task, the
+Service endpoints and the probe events, with one line under each saying what it shows.
+
+Each script prints what it is doing on `==>` lines, what the output shows on `-->` lines,
+and one PASS or FAIL per check. `10-break.sh` fails if the problem stops reproducing,
+`30-fix.sh` and `40-verify.sh` fail if the fix stops working. `run.sh` runs the four in
+order and is what CI runs.
 
 ## Source
 
-- [Liveness, readiness and startup probes](https://kubernetes.io/docs/concepts/workloads/pods/probes/)
-  spells out the difference the fix depends on: readiness failure removes the pod from
-  Service endpoints, liveness failure restarts the container.
+[Liveness, readiness and startup probes](https://kubernetes.io/docs/concepts/workloads/pods/probes/).
+Readiness failure removes the pod from the Service. Liveness failure restarts the
+container.

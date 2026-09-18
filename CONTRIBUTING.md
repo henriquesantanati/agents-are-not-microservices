@@ -31,8 +31,13 @@ shared `kind` cluster named `anm`. Scripts are idempotent and exit non-zero on f
 Assertions read conditions, counts and API responses. Never wall clock seconds: probe
 periods turn any timing assertion into a race.
 
-`40-verify.sh` asserts the broken state as well as the fixed one. A lab that only proves
-the fix says nothing about whether the problem still reproduces.
+`10-break.sh` asserts the broken state and `30-fix.sh` the fixed one, so a problem that
+stops reproducing fails as loudly as a fix that stops working. `40-verify.sh` checks the
+fixed state as deployed, without redeploying. `run.sh` runs `10`, `20`, `30` and `40` in
+order and stops at the first failure. CI runs `run.sh` where a lab has one.
+
+Scripts say what they do on `==>` lines and what the output shows on `-->` lines, one
+short phrase per block of output. Someone who never saw the talk has to be able to follow.
 
 `artifacts/` is written by `10-break.sh` and `30-fix.sh` only, which is why `40-verify.sh`
 sets `ANM_CAPTURE=0`.
