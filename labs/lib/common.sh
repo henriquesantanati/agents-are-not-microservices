@@ -52,8 +52,7 @@ require_tools() {
   done
 }
 
-# Docker, Podman or Finch, whichever is running. ANM_RUNTIME overrides. Finch is nerdctl
-# inside a Lima VM, so build, save and exec take the same flags as the other two.
+# Docker, Podman or Finch, whichever is running. ANM_RUNTIME overrides.
 container_runtime() {
   if [[ -n "${ANM_RUNTIME:-}" ]]; then echo "$ANM_RUNTIME"; return; fi
   if command -v podman >/dev/null 2>&1 && podman info >/dev/null 2>&1; then echo podman; return; fi
