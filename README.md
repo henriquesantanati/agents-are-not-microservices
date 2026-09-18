@@ -16,7 +16,7 @@ the build.
 
 ## Running it
 
-You need Docker or Podman, `kind`, `kubectl`, `helm` and Python 3.12. Everything runs on a
+You need Docker, Podman or Finch, `kind`, `kubectl`, `helm` and Python 3.12. Everything runs on a
 laptop. No GPU, no model, no cloud account.
 
 ```
