@@ -28,7 +28,7 @@ identity.
 
 ## What the reader needs
 
-A laptop with Docker or Podman, `kind`, `kubectl`, `helm` and Python 3.12. Helm is there
+A laptop with Docker, Podman or Finch, `kind`, `kubectl`, `helm` and Python 3.12. Helm is there
 because the scaling lab installs KEDA and metrics-server from their charts. No GPU, no
 model, no cloud account, no cost. Every lab runs on CPU with a stub agent we wrote. The
 talk is about agents, not about serving models, so nothing here serves one.

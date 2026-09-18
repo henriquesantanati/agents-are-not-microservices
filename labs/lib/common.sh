@@ -52,21 +52,24 @@ require_tools() {
   done
 }
 
-# Docker or Podman, whichever is running. ANM_RUNTIME overrides.
+# Docker, Podman or Finch, whichever is running. ANM_RUNTIME overrides. Finch is nerdctl
+# inside a Lima VM, so build, save and exec take the same flags as the other two.
 container_runtime() {
   if [[ -n "${ANM_RUNTIME:-}" ]]; then echo "$ANM_RUNTIME"; return; fi
   if command -v podman >/dev/null 2>&1 && podman info >/dev/null 2>&1; then echo podman; return; fi
   if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then echo docker; return; fi
-  die "no running container runtime, start Docker or Podman"
+  if command -v finch >/dev/null 2>&1 && finch info >/dev/null 2>&1; then echo finch; return; fi
+  die "no running container runtime, start Docker, Podman or Finch"
 }
 RUNTIME="${RUNTIME:-$(container_runtime)}"
 
+# kind picks Docker on its own and needs to be told about the other two. It accepts finch
+# as a provider name and drives it through its nerdctl provider.
 kind_() {
-  if [[ "$RUNTIME" == podman ]]; then
-    KIND_EXPERIMENTAL_PROVIDER=podman kind "$@"
-  else
-    kind "$@"
-  fi
+  case "$RUNTIME" in
+    podman|finch) KIND_EXPERIMENTAL_PROVIDER="$RUNTIME" kind "$@" ;;
+    *) kind "$@" ;;
+  esac
 }
 
 # Creates the shared cluster if it is missing. Never deletes it.
