@@ -28,8 +28,9 @@ labs/probes/40-verify.sh    # asserts both states, exits non-zero on failure
 labs/probes/99-teardown.sh  # deletes the lab's namespace, keeps the cluster
 ```
 
-Every lab has the same six scripts and its own namespace. One `kind` cluster named `anm`
-serves all of them. Start with `labs/probes`. The other four read as differences from it.
+Every lab has the same six scripts and its own namespace, and any lab runs on its own. One
+`kind` cluster named `anm` serves all of them. If you read the code, start with
+`labs/probes`. The other four are the same scripts with different manifests.
 
 ## The labs
 
