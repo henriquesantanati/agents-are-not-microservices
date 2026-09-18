@@ -1,3 +1,0 @@
-$ kubectl -n probes get pod agent-blocking-848945dd74-6l8wz    # 2026-09-18T21:55:23Z
-NAME                              READY   STATUS    RESTARTS     AGE
-agent-blocking-848945dd74-6l8wz   1/1     Running   1 (4s ago)   75s

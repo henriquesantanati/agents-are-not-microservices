@@ -1,2 +1,0 @@
-$ kubectl -n communication exec deploy/client -- python3 /app/agent.py a2a-get    # 2026-09-15T15:04:02Z
-{"replicas": ["a2a-84bfbf4cf4-wvw22", "a2a-84bfbf4cf4-2qjx6"], "outcome": "result", "response": {"jsonrpc": "2.0", "id": 2, "result": {"kind": "task", "id": "b97e208f41d64273a8607ecc2f1587e6", "contextId": "cae0cffcdf9a4c71baf7d9a215878e48", "status": {"state": "working"}, "metadata": {"replica": "a2a-84bfbf4cf4-wvw22", "served_by": "a2a-84bfbf4cf4-2qjx6"}}}}

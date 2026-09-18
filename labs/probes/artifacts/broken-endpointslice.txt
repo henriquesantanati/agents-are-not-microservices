@@ -1,3 +1,0 @@
-$ kubectl -n probes get endpointslice -l kubernetes.io/service-name=agent-async -o custom-columns=POD:.endpoints[*].targetRef.name,READY:.endpoints[*].conditions.ready    # 2026-09-18T21:55:22Z
-POD                            READY
-agent-async-7cdd7669db-rdxjs   true

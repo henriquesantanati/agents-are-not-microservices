@@ -1,2 +1,0 @@
-$ get http://dependency/metrics    # 2026-09-17T22:02:36Z
-{"pod": "dependency-56f58b65f9-5fmr4", "dependency_queue_depth": 1372, "dependency_calls_inflight": 4, "dependency_calls_served": 1344}

@@ -1,2 +1,0 @@
-$ python3 agent/agent.py report .anm/otel fixed-2    # 2026-09-15T15:05:52Z
-{"agent": {"trace_id": "0xcaf3397d15831d3822b59dcd87ce3139", "span_id": "0x7f0de2b9bfcc8907", "status": "ERROR", "events": ["agent.interrupted"], "operation": "invoke_agent"}, "tool_client": null, "tool_server": null, "a2a_client": null, "specialist": null, "trace_in_file": true, "statuses": [], "evaluations": []}

@@ -1,2 +1,0 @@
-$ kubectl -n communication exec deploy/client -- python3 /app/agent.py whoami per-request 20    # 2026-09-15T15:04:03Z
-{"mode": "per-request", "calls": 20, "distinct_replicas": ["mcp-8bfcd744f-9nxnl", "mcp-8bfcd744f-ggntr"]}

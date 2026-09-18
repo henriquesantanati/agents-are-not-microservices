@@ -17,8 +17,8 @@ Commit with a personal identity, never an employer one.
 
 ## Pull requests
 
-A lab lands whole, in one pull request of 400 to 700 lines: stub, manifests, scripts,
-artifacts and its README. Everything else is one reviewable unit per pull request, 100 to
+A lab lands whole, in one pull request of 400 to 700 lines: stub, manifests, scripts and
+its README. Everything else is one reviewable unit per pull request, 100 to
 300 lines, and prose that is not tied to one lab lands on its own.
 
 The reviewer reads, so a lab pull request has to bring the evidence with it: paste the
@@ -39,8 +39,8 @@ order and stops at the first failure. CI runs `run.sh` where a lab has one.
 Scripts say what they do on `==>` lines and what the output shows on `-->` lines, one
 short phrase per block of output. Someone who never saw the talk has to be able to follow.
 
-`artifacts/` is written by `10-break.sh` and `30-fix.sh` only, which is why `40-verify.sh`
-sets `ANM_CAPTURE=0`.
+`10-break.sh` and `30-fix.sh` write their captures to `artifacts/`, which git ignores. They
+are local output for your own reading; the transcript in the PR body is what gets reviewed.
 
 Docker, Podman and Finch all work. The scripts pick the first one that answers, Podman,
 then Docker, then Finch, and `ANM_RUNTIME` overrides that. kind drives Finch through its

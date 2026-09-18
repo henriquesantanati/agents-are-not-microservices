@@ -1,2 +1,0 @@
-$ kubectl -n communication exec deploy/client -- python3 /app/agent.py mcp-sequence    # 2026-09-15T15:03:26Z
-{"replicas": ["mcp-9fb4cb76f-96hqp", "mcp-9fb4cb76f-cf2qk"], "outcome": "error", "response": {"jsonrpc": "2.0", "id": "2117a5a5293d45c789846e2bf103ce7c", "error": {"code": -32602, "message": "unknown handle a2cd736ac4b64d5cb1289cf955b22cff on replica mcp-9fb4cb76f-cf2qk", "data": {"replica": "mcp-9fb4cb76f-cf2qk"}}}}
