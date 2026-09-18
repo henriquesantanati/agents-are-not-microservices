@@ -2,9 +2,8 @@
 
 Companion repository for "Agents Are Not Microservices: Operating Autonomous AI on
 Kubernetes", Cloud Native AI + Inference Day, KubeCon NA 2026, Monday 9 November 2026.
-Speakers Henrique Santana and Lanay Marques.
 
-Decided on 2026-09-14. Everything here is a decision.
+Everything here is a decision.
 This file is the source of truth for the repository. Changes to it are pull requests.
 
 ## The rule
@@ -18,7 +17,8 @@ gives a pattern.
 
 Observability covers OpenTelemetry traces and the GenAI semantic conventions, which
 are OpenTelemetry's agreed attribute names for AI systems. It is not named in the
-proposal. We keep it because it is Lanay's pillar.
+proposal. It stays because a trace is the only way to see the other four pillars fail in
+production.
 
 ## Repository
 
@@ -28,9 +28,10 @@ identity.
 
 ## What the reader needs
 
-A laptop with Docker, `kind`, `kubectl` and Python 3.12. No GPU, no model, no cloud
-account, no cost. Every lab runs on CPU with a stub agent we wrote. The talk is about
-agents, not about serving models, so nothing here serves one.
+A laptop with Docker or Podman, `kind`, `kubectl`, `helm` and Python 3.12. Helm is there
+because the scaling lab installs KEDA and metrics-server from their charts. No GPU, no
+model, no cloud account, no cost. Every lab runs on CPU with a stub agent we wrote. The
+talk is about agents, not about serving models, so nothing here serves one.
 
 ## The stub agent
 
@@ -52,18 +53,26 @@ stub specialist over A2A, and end and flush the open span on SIGTERM.
 Five labs, one per pillar, all the same shape.
 
 ```
+labs/lib/common.sh   cluster, image loading, waiting, assertions, artifact capture
+labs/kind-config.yaml the cluster config, including the hostPath the observability lab reads
 labs/<pillar>/
   README.md          the theory, the commands, what to look for
+  lib.sh             the lab's own helpers, and the broken and fixed observations
   00-setup.sh        checks prerequisites, creates cluster or namespace
   10-break.sh        applies the broken manifest, prints the symptom
   20-observe.sh      the kubectl commands that show why
   30-fix.sh          applies the fixed manifest
-  40-verify.sh       asserts the fix, exits non-zero if it fails
+  40-verify.sh       asserts both states, exits non-zero if either fails
   99-teardown.sh
+  agent/             the stub and its Dockerfile
   manifests/broken.yaml
   manifests/fixed.yaml
   artifacts/         captures used on the slides
 ```
+
+The six numbered scripts stay thin. The observations and the assertions live in `lib.sh`,
+so `10-break.sh` and `40-verify.sh` cannot drift apart, and the shared parts live in
+`labs/lib/common.sh`.
 
 Scripts are idempotent and exit non-zero on failure. CI runs the same files a human
 does.
@@ -116,11 +125,13 @@ Fix returns the agent to one replica and puts a KEDA ScaledObject on the depende
 scales out and the queue falls to KEDA's target. Three replicas, not two, because two
 replicas serve exactly the offered load and a queue at full utilisation does not drain.
 
-The README carries two caveats. KEDA reads the metric through the Service, so each poll
-sees one replica's queue, which is acceptable because the Service spreads the load
-evenly. And a per-agent cap on downstream calls is the backpressure that protects a
-dependency you cannot scale, it moves the queue into the agent rather than removing it,
-and it is not what this lab shows.
+The README carries three caveats. KEDA reads the metric through the Service, so each poll
+sees one replica's queue, which is acceptable because the Service spreads the load evenly,
+and the scaler's `aggregateFromKubeServiceEndpoints` with `aggregationType: sum` is the way
+out when it is not. With the queue drained the dependency scales back down and up again,
+and the HPA's scale-down stabilisation window only delays that. And a per-agent cap on
+downstream calls is the backpressure that protects a dependency you cannot scale, it moves
+the queue into the agent rather than removing it, and it is not what this lab shows.
 
 `00-setup.sh` installs metrics-server, which `kind` does not ship, with
 `--kubelet-insecure-tls`, and installs KEDA from its Helm chart at a pinned version.
@@ -128,7 +139,9 @@ Without metrics-server the HPA reports unknown and the broken state would be a l
 
 CI asserts, in the first broken state, `dependency_queue_depth` above 40 and the HPA's
 `desiredReplicas` at 1 with a numeric CPU reading present. In the second broken state,
-the agent Deployment at 3 replicas and the queue still above 40. In the fixed state, the
+the agent Deployment at 3 replicas, every replica taking tasks, and the queue higher than
+it was when the third replica came up. The queue being above 40 proves nothing on its own,
+because the backlog from the first observation keeps it there. In the fixed state, the
 dependency at 2 or more replicas and the queue at or below 10.
 
 ### Disruption
@@ -178,9 +191,14 @@ failure and the A2A not-found. Fix shows the stateless server and the shared sto
 The replay runs in both states. The client runs in both modes against the stateless
 server, and the README carries the paragraph above.
 
+The stubs speak A2A v1.0, so the methods are `SendMessage` and `GetTask`, the role is
+`ROLE_USER` and the state is `TASK_STATE_WORKING`. MCP requests carry
+`io.modelcontextprotocol/protocolVersion` in `_meta` and results carry `resultType`, which
+the `2026-07-28` revision requires, because there is no handshake.
+
 CI asserts four things. The stateless sequence returns a JSON-RPC result after hitting
 two different replicas. The local-handle server returns a JSON-RPC error naming the
-second replica. `tasks/get` returns an error with local state and a result with the
+second replica. `GetTask` returns an error with local state and a result with the
 shared store. The side effect log holds two lines without an idempotency key and one
 line with one. A fifth check on the client. The persistent client's calls all name
 the same replica, and the per-request client's calls name both.
@@ -203,13 +221,16 @@ And a span is only exported once it ends. The batching processor holds finished 
 for up to five seconds by default, the Python SDK flushes them on `atexit`, and Python
 skips `atexit` on a signal it does not handle. A pod killed mid-task loses its buffered
 spans and never exports the span of the task it was running, because that span never
-ended.
+ended. On `kind` the delete also takes the whole grace period: Python is PID 1, and a
+namespace init is not sent a signal it has no handler for, so nothing happens until the
+SIGKILL at the end.
 
 Lab. Stub agent, stub MCP server and stub A2A specialist with the OpenTelemetry SDK,
 exporting to a file on a hostPath volume, so the file outlives the pod that wrote it.
-On `kind` a hostPath lives inside the node container, so the cluster config in
-`00-setup.sh` carries an `extraMounts` entry that maps it to a directory on the laptop,
-and the scripts and CI read it from there.
+On `kind` a hostPath lives inside the node container, so `labs/kind-config.yaml` carries an
+`extraMounts` entry that maps it to a directory on the laptop, and the scripts and CI read
+it from there. The path is relative, which means `kind create cluster` has to run from the
+repository root.
 The agent carries trace context in `params._meta` as the OpenTelemetry MCP conventions
 define, and the server extracts it from there as the remote parent. HTTP headers alone
 are not enough, because the conventions say header propagation covers the request and
@@ -237,12 +258,12 @@ matches the agent span, and every span except the interrupted one has status OK 
 
 Probes, scaling, disruption, communication, observability. Probes first because it is
 the reader's entry point. Scaling second because it is the largest build. Communication
-next because it is the smallest. Observability last because it now carries three
+next because it is the smallest. Observability last because it carries three
 break states and depends on the A2A stub from communication.
 
 ## CI
 
-GitHub Actions on `kind`. Every lab is small now, so the private repository runner at
+GitHub Actions on `kind`. Every lab is small, so the private repository runner at
 2 vCPU and 8GB fits all of them. No budget script is needed.
 
 Both states are asserted. A workflow that only proves the fix says nothing about
@@ -265,9 +286,21 @@ repository exposes its whole history.
 
 ## Collaboration
 
-One pull request per reviewable unit, roughly 100 to 300 changed lines, prose and code
-never mixed. Lanay reviews by reading, so every lab PR body carries a pasted transcript
-of the break and the fix and a link to the CI run.
+A first drop, the harness with the five labs, CI and the prose that describes them, lands
+as one pull request of around 3700 lines. Split, it would ask for scripts to be reviewed
+before the thing they run exists, and for a lab to be reviewed before the harness it stands
+on. Read one lab end to end, then the other four as differences from it, because they are
+the same shape on purpose.
+
+A lab lands whole, as one pull request: stub, manifests, scripts, artifacts and the README
+that explains them. None of those parts can be reviewed without the others. A lab runs 400
+to 700 lines.
+
+Everything else is one reviewable unit per pull request, 100 to 300 changed lines. Prose
+that is not tied to one lab, the repository README and `CONTRIBUTING.md`, lands on its own.
+
+The reviewer reads, so every lab PR body carries a pasted transcript of the break and the
+fix and a link to the CI run.
 
 ## README and links
 
@@ -275,7 +308,7 @@ Links sit inline under pillar headings. Each link backs one claim. Link first, o
 sentence after saying what the link establishes. After the links, a table of the five
 labs and which are ready.
 
-Links that stay. Lin Sun's CNCF post, the Kubernetes agent-sandbox blog, AWS AgentCore
+Links. Lin Sun's CNCF post, the Kubernetes agent-sandbox blog, AWS AgentCore
 Runtime, Microsoft kars, which is its Kubernetes agent runtime, and kagent documentation for the
 opener. The Kubernetes probes page. The Kubernetes PodDisruptionBudget page and Karpenter disruption concepts. The KEDA
 project page. The MCP specification revision `2026-07-28` changelog for the removal of
@@ -289,9 +322,12 @@ sources. For the termination loss, the OpenTelemetry trace SDK specification's b
 processor section and the Python `atexit` documentation note on signals.
 
 The KEDA `metrics-api` scaler reference lives in the scaling lab README, where its job
-is to stop a reader copying a wrong field. The vLLM metrics document is no longer
-needed.
+is to stop a reader copying a wrong field.
 
 ## Open risks
 
-No lab has yet run end to end on `kind` through its own scripts.
+All five labs run end to end on `kind` through their own scripts, on Kubernetes 1.37 with
+rootless podman. Three things are unproven. The hooks have not run in full, because no
+machine that runs the labs has `gitleaks` installed. CI has not run. And the agent's CPU in
+the scaling lab reads between 25 and 55 percent of its request depending on the machine,
+against a 70 percent target.
