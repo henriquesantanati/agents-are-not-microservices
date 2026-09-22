@@ -1,2 +1,0 @@
-$ kubectl -n communication exec deploy/client -- python3 /app/agent.py replay broken-1420713042    # 2026-09-15T15:03:27Z
-{"side_effects": 2, "log": [{"amount": 42, "replica": "mcp-9fb4cb76f-cf2qk", "key": "1131404e20b84fbe9a2783c524affad4"}, {"amount": 42, "replica": "mcp-9fb4cb76f-cf2qk", "key": "1131404e20b84fbe9a2783c524affad4"}]}

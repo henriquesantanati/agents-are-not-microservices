@@ -9,10 +9,11 @@ KUBE_CONTEXT="kind-${CLUSTER_NAME}"
 # node container, so the cluster maps it to this directory on the laptop.
 OTEL_HOST_DIR="${REPO_ROOT}/.anm/otel"
 FAILURES=0
+PASSES=0
 
 log() { printf '==> %s\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
-pass() { printf 'PASS: %s\n' "$*"; }
+pass() { PASSES=$((PASSES + 1)); printf 'PASS: %s\n' "$*"; }
 
 # check <description> <expected> <actual>
 check() {

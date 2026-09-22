@@ -1,2 +1,0 @@
-$ kubectl -n communication exec deploy/client -- python3 /app/agent.py mcp-sequence    # 2026-09-15T15:04:02Z
-{"replicas": ["mcp-8bfcd744f-9nxnl", "mcp-8bfcd744f-ggntr"], "outcome": "result", "response": {"jsonrpc": "2.0", "id": "20a7ea77dded44f6aaacf1f7b699e9e3", "result": {"content": [{"type": "text", "text": "{\"handle\": \"eyJpdGVtcyI6IFsiYm9vayJdfQ==\", \"items\": [\"book\"], \"replica\": \"mcp-8bfcd744f-ggntr\"}"}], "structuredContent": {"handle": "eyJpdGVtcyI6IFsiYm9vayJdfQ==", "items": ["book"], "replica": "mcp-8bfcd744f-ggntr"}}}}

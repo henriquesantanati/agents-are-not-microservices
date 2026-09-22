@@ -1,3 +1,0 @@
-$ kubectl -n disruption get pdb agent    # 2026-09-15T14:59:24Z
-NAME    MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE
-agent   N/A             0                 0                     19m

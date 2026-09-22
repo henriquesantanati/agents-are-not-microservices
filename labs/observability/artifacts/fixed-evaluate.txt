@@ -1,2 +1,0 @@
-$ kubectl -n observability exec deploy/agent -- python3 /app/agent.py evaluate    # 2026-09-15T15:05:52Z
-{"evaluated": 1}

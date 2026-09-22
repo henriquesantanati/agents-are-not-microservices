@@ -1,2 +1,0 @@
-$ kubectl -n disruption logs agent-0 -c agent    # 2026-09-15T15:02:49Z
-resume chain at step 9 of 90 from checkpoint
