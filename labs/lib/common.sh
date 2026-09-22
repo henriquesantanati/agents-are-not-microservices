@@ -120,6 +120,17 @@ load_image() {
   rm -f "$archive"
 }
 
+# retry <tries> <seconds> <command...>: reruns a read that can miss once under load.
+retry() {
+  local tries="$1" pause="$2" i
+  shift 2
+  for ((i = 1; i <= tries; i++)); do
+    "$@" && return
+    (( i < tries )) && sleep "$pause"
+  done
+  return 1
+}
+
 # wait_for <timeout-seconds> <command...>
 # Polls until the command succeeds. Returns 1 on timeout; the caller asserts.
 wait_for() {
