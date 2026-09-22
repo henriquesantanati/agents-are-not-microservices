@@ -8,10 +8,11 @@ METRICS_SERVER_CHART_VERSION=3.14.0
 KEDA_CHART_VERSION=2.20.2
 
 # get <url> [key]: read a metrics document from inside the cluster, through the loadgen pod.
-get() { k -n "$NS" exec deploy/loadgen -- python3 /app/agent.py get "$@"; }
+# Three tries, because one slow answer from a dependency under load is not a finding.
+get() { retry 3 2 k -n "$NS" exec deploy/loadgen -- python3 /app/agent.py get "$@"; }
 service_queue() { get http://dependency/metrics dependency_queue_depth; }
 dependency_pods() { k -n "$NS" get pod -l app=dependency --field-selector=status.phase=Running -o jsonpath='{.items[*].metadata.name}'; }
-pod_queue() { k -n "$NS" exec "$1" -- python3 /app/agent.py get http://127.0.0.1:8080/metrics dependency_queue_depth; }
+pod_queue() { retry 3 2 k -n "$NS" exec "$1" -- python3 /app/agent.py get http://127.0.0.1:8080/metrics dependency_queue_depth; }
 ready_replicas() { k -n "$NS" get deployment "$1" -o jsonpath='{.status.readyReplicas}'; }
 hpa_cpu() { k -n "$NS" get hpa agent -o jsonpath='{.status.currentMetrics[0].resource.current.averageUtilization}'; }
 
@@ -26,7 +27,7 @@ max_pod_queue() {
 }
 
 agent_pods() { k -n "$NS" get pod -l app=agent --field-selector=status.phase=Running -o jsonpath='{.items[*].metadata.name}'; }
-agent_tasks() { k -n "$NS" exec "$1" -- python3 /app/agent.py get http://127.0.0.1:8080/metrics agent_tasks_received; }
+agent_tasks() { retry 3 2 k -n "$NS" exec "$1" -- python3 /app/agent.py get http://127.0.0.1:8080/metrics agent_tasks_received; }
 every_agent_has_tasks() {
   local pod
   for pod in $(agent_pods); do
