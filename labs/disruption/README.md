@@ -88,9 +88,10 @@ four in order, and is what CI runs.
 ## Killing a pod without a graceful stop
 
 The lab sets a memory limit and asks the stub to allocate past it. Do not reach for
-`kubectl exec -- kill -9 1` instead. The command reports success and nothing happens, since
-[pid_namespaces(7)](https://man7.org/linux/man-pages/man7/pid_namespaces.7.html) only
-delivers SIGKILL to a namespace init from an ancestor namespace. `30-fix.sh` runs it once,
+`kubectl exec -- kill -9 1` instead. The command reports success and nothing happens.
+[pid_namespaces(7)](https://man7.org/linux/man-pages/man7/pid_namespaces.7.html) drops any
+signal sent to a namespace init from inside the namespace unless init has a handler for it,
+and SIGKILL reaches it only from an ancestor namespace, which is where the kubelet lives. `30-fix.sh` runs it once,
 after the OOM kill, and asserts that the chain keeps going and the restart count stays put.
 
 ## Karpenter

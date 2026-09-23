@@ -6,7 +6,7 @@ pod. Neither is free, and even when both work the trace can be green and the ans
 
 ## The problem
 
-The MCP hop is solved. SEP-414 and the OpenTelemetry MCP conventions put the context in
+The MCP hop is specified. SEP-414 and the OpenTelemetry MCP conventions put the context in
 `params._meta`, and they are explicit that HTTP headers are not enough, because one
 connection carries many messages.
 
