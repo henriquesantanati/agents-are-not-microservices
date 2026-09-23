@@ -12,8 +12,10 @@ connection carries many messages.
 
 The A2A hop is not. The specification lists tracing under design goals and stops there,
 the Python SDK's client transports inject nothing, and issues #2103 and #2026 are open
-proposals to fix it. So the delegated step starts a trace of its own, and the picture of
-the request has a hole in it exactly where the agent asked another agent for help.
+proposals to fix it. Per-request HTTP instrumentation on both sides would carry
+`traceparent` in the header, and this stub has none, so what you see is what the protocol
+gives you. The delegated step starts a trace of its own, and the picture of the request
+has a hole in it exactly where the agent asked another agent for help.
 
 Then the part no propagation fixes. Every span can be OK and the answer can still be
 wrong, and nothing in the GenAI conventions puts a quality signal on a span. A

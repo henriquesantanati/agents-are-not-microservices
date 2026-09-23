@@ -13,7 +13,7 @@ show() { printf -- '--> %s\n\n' "$*"; }
 
 in_agent() { k -n "$NS" exec deploy/agent -- python3 /app/agent.py "$@"; }
 report() { python3 "$AGENT_PY" report "$OTEL_HOST_DIR" "$1"; }
-spans() { python3 "$AGENT_PY" spans "$OTEL_HOST_DIR"; }
+spans() { python3 "$AGENT_PY" spans "$OTEL_HOST_DIR" "$@"; }
 
 # json_field <python-expression-on-d>: reads a JSON document on stdin as d and prints the
 # expression. eval only ever sees expressions written in this file, never command output.
@@ -83,8 +83,8 @@ observe_broken() {
   log "One task: think, call an MCP tool, delegate a step over A2A, answer."
   run_task "$id"
   echo
-  save_artifact "$LAB_DIR" broken-spans "python3 agent/agent.py spans .anm/otel" "$(spans)"
-  show "Three spans in one trace, and the specialist under a trace id of its own. The A2A hop lost it."
+  save_artifact "$LAB_DIR" broken-spans "python3 agent/agent.py spans .anm/otel $id" "$(spans "$id")"
+  show "Four spans in one trace, and the specialist under a trace id of its own. The A2A hop lost it."
   r="$(report "$id")"
   save_artifact "$LAB_DIR" broken-report "python3 agent/agent.py report .anm/otel $id" "$r"
   check_mcp_hop "$r"
@@ -112,7 +112,7 @@ observe_fixed() {
   log "Same task. The A2A message now carries traceparent in its metadata."
   run_task "$id"
   echo
-  save_artifact "$LAB_DIR" fixed-spans "python3 agent/agent.py spans .anm/otel" "$(spans)"
+  save_artifact "$LAB_DIR" fixed-spans "python3 agent/agent.py spans .anm/otel $id" "$(spans "$id")"
   show "Five spans, one trace id. The specialist joined it through the message, not the header."
   echo
 

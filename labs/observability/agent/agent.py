@@ -16,7 +16,7 @@ Commands:
   python3 agent.py task ID THINK_SECONDS [detach]   inside the agent pod
   python3 agent.py evaluate                        inside the agent pod, fixed state
   python3 agent.py report DIR ID                   on the laptop, standard library only
-  python3 agent.py spans DIR                       on the laptop, one line per exported span
+  python3 agent.py spans DIR [TASK_ID]             on the laptop, one line per exported span
 """
 
 import glob
@@ -284,20 +284,26 @@ def report(directory, task_id):
     }))
 
 
-def list_spans(directory):
-    """One line per exported span: name, kind, trace id, status, events."""
+def list_spans(directory, task_id=None):
+    """One line per exported span: name, kind, trace id, status, events. With a task id,
+    only the traces that task's spans belong to, so the MCP server span, which carries no
+    task id, stays in the picture."""
+    spans = []
     for path in sorted(glob.glob(os.path.join(directory, "spans-*.jsonl"))):
-        for line in open(path):
-            s = json.loads(line)
-            print(f"{s['name']:30} {s['kind'][9:]:8} {s['context']['trace_id']} "
-                  f"{s['status']['status_code']:6} task={s['attributes'].get('anm.task.id', '-'):10} "
-                  f"{[e['name'] for e in s['events']]}")
+        spans += [json.loads(line) for line in open(path) if line.strip()]
+    if task_id:
+        traces = {s["context"]["trace_id"] for s in spans if s["attributes"].get("anm.task.id") == task_id}
+        spans = [s for s in spans if s["context"]["trace_id"] in traces]
+    for s in spans:
+        print(f"{s['name']:30} {s['kind'][9:]:8} {s['context']['trace_id']} "
+              f"{s['status']['status_code']:6} task={s['attributes'].get('anm.task.id', '-'):10} "
+              f"{[e['name'] for e in s['events']]}")
 
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "serve"
     if cmd == "spans":
-        list_spans(sys.argv[2])
+        list_spans(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
     elif cmd == "task":
         task(sys.argv[2], float(sys.argv[3]), len(sys.argv) > 4 and sys.argv[4] == "detach")
     elif cmd == "evaluate":
