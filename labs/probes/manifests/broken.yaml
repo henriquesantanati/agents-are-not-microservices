@@ -1,4 +1,4 @@
-# Both probes ask /health, so ready means alive. Probe blocks match slide 7.
+# Both probes ask /health, so ready means alive.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
