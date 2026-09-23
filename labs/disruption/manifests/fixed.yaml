@@ -1,5 +1,5 @@
-# State outlives the pod. The pod template carries slide 14's block; the agent also
-# checkpoints on SIGTERM and after every step (CHECKPOINT=all).
+# State outlives the pod. The preStop hook checkpoints, and the agent also checkpoints on
+# SIGTERM and after every step (CHECKPOINT=all).
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
