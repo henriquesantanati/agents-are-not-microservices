@@ -40,6 +40,9 @@ once the old pod is gone.
 
 ## Run it
 
+The numbered scripts expect the cluster, namespace and image that `00-setup.sh` creates,
+so run it first. `run.sh` runs it for you.
+
 ```
 ./00-setup.sh      # creates the anm cluster if it is missing, builds and loads the image
 ./10-break.sh      # eviction refused, delete accepted, chain lost at grace 30 and 120
@@ -47,7 +50,7 @@ once the old pod is gone.
 ./30-fix.sh        # the same delete, then an OOM kill, then kill -9 from inside
 ./40-verify.sh     # checks the fixed state as deployed, exits non-zero on failure
 ./99-teardown.sh   # deletes the disruption namespace, keeps the cluster
-./run.sh           # 10, 20, 30 and 40 in one go, stops at the first failure
+./run.sh           # setup, then 10, 20, 30 and 40 in one go, stops at the first failure
 ```
 
 `10-break.sh` takes about three minutes, most of it waiting out the 120 second grace
@@ -79,8 +82,8 @@ where the OpenTelemetry SDK lives, and it demonstrates both the loss and the fix
 
 Each script prints what it is doing on `==>` lines, what the output shows on `-->` lines,
 and one PASS or FAIL per check. `10-break.sh` fails if the problem stops reproducing,
-`30-fix.sh` and `40-verify.sh` fail if the fix stops working. `run.sh` runs the four in
-order and is what CI runs.
+`30-fix.sh` and `40-verify.sh` fail if the fix stops working. `run.sh` runs setup and the
+four in order, and is what CI runs.
 
 ## Killing a pod without a graceful stop
 
