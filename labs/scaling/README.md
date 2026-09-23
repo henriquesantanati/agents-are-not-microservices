@@ -1,14 +1,14 @@
 # Scaling
 
-Assumption: load means CPU.
+An agent takes one task and turns it into many downstream calls, and it decides how many
+while it runs. The tier that saturates is therefore the dependency, and the autoscaler is
+watching the agent's CPU. This lab shows an HPA that never fires while a queue grows
+without limit, and a KEDA ScaledObject on the dependency's own queue that drains it.
 
-## What breaks
-
-One task turns into many downstream calls, and the agent decides how many while it runs.
-The tier that saturates is therefore never the tier the autoscaler is watching.
+## The problem
 
 An agent waiting on a dependency burns almost no CPU, so a CPU autoscaler on the agent
-never fires. Scaling the agents on any other signal does not help either: the load on the
+never fires. Scaling the agents on any other signal does not help either. The load on the
 dependency is the incoming rate times the fan-out, so more agents just spread the same
 calls across more callers. What you want to scale is whatever queue is growing, on that
 queue.
@@ -24,57 +24,60 @@ arithmetic is checkable.
 | `agent` | fans each task out into 20 concurrent calls | `FANOUT=20` |
 | `load` | sends 2 tasks per second, which is 40 calls per second downstream | `RATE=2` |
 
-Both servers publish JSON on `/metrics`: `agent_downstream_calls_inflight` from the agent,
-`dependency_queue_depth` from the dependency. Nothing scrapes them. The scripts read them,
-KEDA reads one of them, and the assertions read the same numbers the scripts print.
+Both servers publish JSON on `/metrics`, `agent_downstream_calls_inflight` from the agent
+and `dependency_queue_depth` from the dependency. Nothing scrapes them. The scripts read
+them, KEDA reads one of them, and the assertions read the same numbers the scripts print.
 
 ## Run it
 
 The numbered scripts expect the cluster, namespace and image that `00-setup.sh` creates,
-so run it first.
+so run it first. `run.sh` runs it for you.
 
 ```
 ./00-setup.sh      # cluster, metrics-server, KEDA, image
 ./10-break.sh      # HPA on agent CPU, then three agents by hand
 ./20-observe.sh    # deployments, autoscalers, CPU, per replica queue
 ./30-fix.sh        # agent back to one, KEDA ScaledObject on the dependency
-./40-verify.sh     # asserts both states, exits non-zero on failure
+./40-verify.sh     # checks the fixed state as deployed, exits non-zero on failure
 ./99-teardown.sh   # deletes the scaling namespace, keeps KEDA and the cluster
+./run.sh           # setup, then 10, 20, 30 and 40 in one go, stops at the first failure
 ```
 
 `00-setup.sh` installs metrics-server with `--kubelet-insecure-tls`, since `kind` does not
 ship it and an HPA reporting `<unknown>` would make the broken state a lie. It also
-installs KEDA from its Helm chart at a pinned version, so you need `helm`.
+installs KEDA from its Helm chart at a pinned version, so you need `helm`. The whole run
+takes eight minutes or so, most of it waiting on metrics-server and KEDA.
 
 ## What to look for
 
-The HPA on the agent reads real CPU, somewhere between 25 and 55 percent of the 100m
-request depending on the machine, decides one replica is enough, and never fires. The
-dependency queue climbs past 600 in the first half minute and keeps going.
+`10-break.sh` and `30-fix.sh` print the autoscaler, the Deployments and the dependency's
+`/metrics`. Watch two numbers, the agent's CPU and `dependency_queue_depth`.
 
-Then scale the agent to three by hand. All three replicas take tasks, and the queue grows
-faster than before rather than draining, because 2 tasks per second times 20 calls is 40
-calls per second whether one agent or three is making them.
-
-The fix puts the agent back to one replica and a KEDA ScaledObject on the dependency,
-reading `dependency_queue_depth` from the dependency's own `/metrics` through its Service,
-`targetValue` 10, `maxReplicaCount` 3. The dependency scales out and every replica's queue
-falls to 10 or below within about a minute and a half.
+| | Broken, HPA on agent CPU | Fixed, KEDA on the dependency's queue |
+|---|---|---|
+| The autoscaler | `kubectl get hpa agent` shows CPU somewhere between 15 and 40 percent of the 200m request depending on the machine, target 70, `REPLICAS 1`. It never fires | A ScaledObject on the dependency, `targetValue` 10, `maxReplicaCount` 3, and the HPA KEDA made from it |
+| `dependency_queue_depth` | Past 40 in the first half minute and climbing, because 40 calls a second arrive at a replica that serves 20 | 10 or below on every replica within about a minute and a half |
+| Replicas | Agent 1, dependency 1. Then the script scales the agent to 3 by hand and the queue grows faster, because 2 tasks a second times 20 calls is 40 calls a second whoever makes them | Agent 1, dependency 3 |
 
 Three replicas, not two. Two would serve exactly the 40 calls per second being offered,
 and a queue at full utilisation never drains.
+
+Each script prints what it is doing on `==>` lines, what the output shows on `-->` lines,
+and one PASS or FAIL per check. `10-break.sh` fails if the problem stops reproducing,
+`30-fix.sh` and `40-verify.sh` fail if the fix stops working. `run.sh` runs setup and the
+four in order, and is what CI runs.
 
 ## Caveats
 
 KEDA reads the metric through the Service, so each poll sees one replica's queue rather
 than the sum. That is tolerable here because the Service spreads calls evenly, and the
 assertions read every replica directly so they do not depend on which pod KEDA happened to
-hit. The scaler does have `aggregateFromKubeServiceEndpoints` with `aggregationType: sum`
+hit. The scaler supports `aggregateFromKubeServiceEndpoints` with `aggregationType: sum`
 for the case where it matters.
 
 Leave the fixed state running for six minutes or so and the dependency scales back down and
 then straight back up. An empty queue reads as no demand, and the HPA's scale-down
-stabilisation window is what delays the flap, not prevent it.
+stabilisation window delays the flap without preventing it.
 
 A per-agent cap on downstream calls is the backpressure that protects a dependency you
 cannot scale. It moves the queue into the agent instead of removing it, and it is not what
@@ -82,8 +85,9 @@ this lab shows.
 
 ## Sources
 
-- [KEDA Metrics API scaler](https://keda.sh/docs/latest/scalers/metrics-api/). Read it
-  before copying the trigger. The field names are not the ones the Prometheus scaler uses,
-  and `valueLocation` takes a path into the JSON body.
-- [KEDA](https://keda.sh/) is CNCF graduated, which is the reason the talk reaches for it
-  rather than a custom controller.
+[KEDA Metrics API scaler](https://keda.sh/docs/latest/scalers/metrics-api/). Read it
+before copying the trigger. The field names are not the ones the Prometheus scaler uses,
+and `valueLocation` takes a path into the JSON body.
+
+[KEDA](https://keda.sh/) is CNCF graduated, which is why this lab reaches for it rather
+than a custom controller.
