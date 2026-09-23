@@ -30,6 +30,9 @@ KEDA reads one of them, and the assertions read the same numbers the scripts pri
 
 ## Run it
 
+The numbered scripts expect the cluster, namespace and image that `00-setup.sh` creates,
+so run it first.
+
 ```
 ./00-setup.sh      # cluster, metrics-server, KEDA, image
 ./10-break.sh      # HPA on agent CPU, then three agents by hand
