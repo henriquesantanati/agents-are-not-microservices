@@ -1,5 +1,4 @@
-# One probe per question. Probe blocks match slide 8. The only change from broken.yaml
-# is the readiness path.
+# One probe per question. The only change from broken.yaml is the readiness path.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
