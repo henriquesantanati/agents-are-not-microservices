@@ -16,12 +16,13 @@ PASSES=0
 # red versus green: PASS is blue, FAIL and ERROR are bold red, the --> phrase is orange,
 # the ==> step is bold, and the $ command line is dim so the output under it stands out.
 if [[ -z "${NO_COLOR:-}" && -t 1 ]]; then
-  C_STEP=$'\e[1m'        C_SHOW=$'\e[38;5;208m' C_PASS=$'\e[34m'
+  # 256-colour values picked to read on a dark and a light background alike.
+  C_STEP=$'\e[1m'        C_SHOW=$'\e[38;5;166m' C_PASS=$'\e[38;5;32m'
   C_CMD=$'\e[2m'         C_RESET=$'\e[0m'
 else
   C_STEP='' C_SHOW='' C_PASS='' C_CMD='' C_RESET=''
 fi
-if [[ -z "${NO_COLOR:-}" && -t 2 ]]; then C_FAIL=$'\e[1;31m' C_RESET2=$'\e[0m'; else C_FAIL='' C_RESET2=''; fi
+if [[ -z "${NO_COLOR:-}" && -t 2 ]]; then C_FAIL=$'\e[1;38;5;196m' C_RESET2=$'\e[0m'; else C_FAIL='' C_RESET2=''; fi
 
 log() { printf '%s==> %s%s\n' "$C_STEP" "$*" "$C_RESET"; }
 die() { printf '%sERROR: %s%s\n' "$C_FAIL" "$*" "$C_RESET2" >&2; exit 1; }
