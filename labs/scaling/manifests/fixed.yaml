@@ -22,9 +22,10 @@ spec:
           ports:
             - containerPort: 8080
           resources:
-            # The stub's Python HTTP client costs 40m to 70m at this load. 200m keeps the
-            # HPA's percentage well under its target on any machine, which is the point.
-            requests: { cpu: 200m, memory: 128Mi }
+            # The stub's Python HTTP client costs 30m to 70m at this load. 150m keeps the
+            # HPA's percentage under its target on any machine, and three replicas of it
+            # still fit on a small node next to KEDA and metrics-server.
+            requests: { cpu: 150m, memory: 128Mi }
 ---
 apiVersion: v1
 kind: Service

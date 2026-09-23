@@ -93,7 +93,10 @@ observe_broken() {
   log "Scaling the agent by hand to 3 replicas, the other thing people try."
   k -n "$NS" delete hpa agent --ignore-not-found >/dev/null
   k -n "$NS" scale deployment agent --replicas=3 >/dev/null
-  k -n "$NS" rollout status deployment/agent --timeout=120s >/dev/null
+  if ! k -n "$NS" rollout status deployment/agent --timeout=120s >/dev/null; then
+    capture "$LAB_DIR" broken-agent-x3-pods k -n "$NS" get pod -l app=agent
+    die "not all three agent replicas came up; a Pending one usually means the node is out of CPU requests"
+  fi
   # The backlog alone keeps the queue above 40 for a while, so that proves nothing.
   # Wait until every agent replica has taken tasks and the dependency has served 30
   # seconds of its capacity, then require the queue to have grown.

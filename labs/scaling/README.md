@@ -55,7 +55,7 @@ takes eight minutes or so, most of it waiting on metrics-server and KEDA.
 
 | | Broken, HPA on agent CPU | Fixed, KEDA on the dependency's queue |
 |---|---|---|
-| The autoscaler | `kubectl get hpa agent` shows CPU somewhere between 15 and 40 percent of the 200m request depending on the machine, target 70, `REPLICAS 1`. It never fires | A ScaledObject on the dependency, `targetValue` 10, `maxReplicaCount` 3, and the HPA KEDA made from it |
+| The autoscaler | `kubectl get hpa agent` shows CPU somewhere between 20 and 60 percent of the 150m request depending on the machine, target 70, `REPLICAS 1`. It never fires | A ScaledObject on the dependency, `targetValue` 10, `maxReplicaCount` 3, and the HPA KEDA made from it |
 | `dependency_queue_depth` | Past 40 in the first half minute and climbing, because 40 calls a second arrive at a replica that serves 20 | 10 or below on every replica within about a minute and a half |
 | Replicas | Agent 1, dependency 1. Then the script scales the agent to 3 by hand and the queue grows faster, because 2 tasks a second times 20 calls is 40 calls a second whoever makes them | Agent 1, dependency 3 |
 
