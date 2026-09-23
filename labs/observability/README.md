@@ -50,6 +50,9 @@ real evaluators are models or graders, and the event they emit is the same shape
 
 ## Run it
 
+The numbered scripts expect the cluster, namespace and image that `00-setup.sh` creates,
+so run it first. `run.sh` runs it for you.
+
 ```
 ./00-setup.sh      # cluster, namespace, image with the OpenTelemetry SDK
 ./10-break.sh      # a green trace with the wrong answer, a split trace, a trace that never arrives
@@ -57,7 +60,7 @@ real evaluators are models or graders, and the event they emit is the same shape
 ./30-fix.sh        # one trace across both hops, a score on the span, a flushed interruption
 ./40-verify.sh     # checks the fixed state as deployed, exits non-zero on failure
 ./99-teardown.sh   # deletes the observability namespace and the span files
-./run.sh           # 10, 20, 30 and 40 in one go, stops at the first failure
+./run.sh           # setup, then 10, 20, 30 and 40 in one go, stops at the first failure
 ```
 
 ## What to look for
@@ -77,8 +80,8 @@ leave room for the flush.
 
 Each script prints what it is doing on `==>` lines, what the output shows on `-->` lines,
 and one PASS or FAIL per check. `10-break.sh` fails if the problem stops reproducing,
-`30-fix.sh` and `40-verify.sh` fail if the fix stops working. `run.sh` runs the four in
-order and is what CI runs.
+`30-fix.sh` and `40-verify.sh` fail if the fix stops working. `run.sh` runs setup and the
+four in order, and is what CI runs.
 
 ## Sources
 

@@ -26,11 +26,11 @@ labs/probes/20-observe.sh   # the kubectl commands that show why
 labs/probes/30-fix.sh       # applies the fixed manifest
 labs/probes/40-verify.sh    # checks the fixed state as deployed, exits non-zero on failure
 labs/probes/99-teardown.sh  # deletes the lab's namespace, keeps the cluster
-labs/probes/run.sh          # 10, 20, 30 and 40 in one go, stops at the first failure
+labs/probes/run.sh          # setup, then 10, 20, 30 and 40 in one go, stops at the first failure
 ```
 
 Every lab has the same six numbered scripts and its own namespace, and any lab runs on its
-own. One
+own. Run `00-setup.sh` before the numbered scripts, or run `run.sh`, which does. One
 `kind` cluster named `anm` serves all of them. The scripts say what they are doing on `==>`
 lines and what the output shows on `-->` lines, so you can follow without having seen the
 talk. If you read the code, start with `labs/probes`. The other four are the same scripts

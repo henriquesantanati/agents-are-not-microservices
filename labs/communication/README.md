@@ -43,6 +43,9 @@ replica can see it.
 
 ## Run it
 
+The numbered scripts expect the cluster, namespace and image that `00-setup.sh` creates,
+so run it first. `run.sh` runs it for you.
+
 ```
 ./00-setup.sh      # creates the anm cluster if it is missing, builds and loads the image
 ./10-break.sh      # local handles, Tasks in memory, a key that is ignored
@@ -50,7 +53,7 @@ replica can see it.
 ./30-fix.sh        # stateless MCP, Tasks in the store, a key that is honoured
 ./40-verify.sh     # checks the fixed state as deployed, exits non-zero on failure
 ./99-teardown.sh   # deletes the communication namespace, keeps the cluster
-./run.sh           # 10, 20, 30 and 40 in one go, stops at the first failure
+./run.sh           # setup, then 10, 20, 30 and 40 in one go, stops at the first failure
 ```
 
 ## What to look for
@@ -70,8 +73,8 @@ config changes that, which is why it is in the lab.
 
 Each script prints what it is doing on `==>` lines, what the output shows on `-->` lines,
 and one PASS or FAIL per check. `10-break.sh` fails if the problem stops reproducing,
-`30-fix.sh` and `40-verify.sh` fail if the fix stops working. `run.sh` runs the four in
-order and is what CI runs.
+`30-fix.sh` and `40-verify.sh` fail if the fix stops working. `run.sh` runs setup and the
+four in order, and is what CI runs.
 
 ## Sources
 
