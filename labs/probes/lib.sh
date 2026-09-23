@@ -7,9 +7,6 @@ LAB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Longer than three failed probes at the default ten-second period, with room to observe.
 TASK_SECONDS=90
 
-# One phrase under a block of output, saying what it shows.
-show() { printf -- '--> %s\n\n' "$*"; }
-
 pod_of() { k -n "$NS" get pod -l app="$1" -o jsonpath='{.items[0].metadata.name}'; }
 ready_of() { k -n "$NS" get pod "$1" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'; }
 restarts_of() { k -n "$NS" get pod "$1" -o jsonpath='{.status.containerStatuses[0].restartCount}'; }

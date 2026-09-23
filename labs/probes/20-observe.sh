@@ -7,7 +7,8 @@ async="$(pod_of agent-async)"
 blocking="$(pod_of agent-blocking)"
 
 run() {
-  printf '\n$ %s\n' "$*" | sed 's/^\$ k /$ kubectl /'
+  echo
+  cmdline "$@"
   "$@" 2>&1 || true
 }
 

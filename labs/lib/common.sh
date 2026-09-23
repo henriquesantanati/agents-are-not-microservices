@@ -11,17 +11,34 @@ OTEL_HOST_DIR="${REPO_ROOT}/.anm/otel"
 FAILURES=0
 PASSES=0
 
-log() { printf '==> %s\n' "$*"; }
-die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
-pass() { PASSES=$((PASSES + 1)); printf 'PASS: %s\n' "$*"; }
+# Colour, only when the output is a terminal and NO_COLOR is unset. The words carry the
+# meaning on their own, so a log file or CI reads the same. The palette keeps meaning off
+# red versus green: PASS is blue, FAIL and ERROR are bold red, the --> phrase is orange,
+# the ==> step is bold, and the $ command line is dim so the output under it stands out.
+if [[ -z "${NO_COLOR:-}" && -t 1 ]]; then
+  # 256-colour values picked to read on a dark and a light background alike.
+  C_STEP=$'\e[1m'        C_SHOW=$'\e[38;5;166m' C_PASS=$'\e[38;5;32m'
+  C_CMD=$'\e[2m'         C_RESET=$'\e[0m'
+else
+  C_STEP='' C_SHOW='' C_PASS='' C_CMD='' C_RESET=''
+fi
+if [[ -z "${NO_COLOR:-}" && -t 2 ]]; then C_FAIL=$'\e[1;38;5;196m' C_RESET2=$'\e[0m'; else C_FAIL='' C_RESET2=''; fi
+
+log() { printf '%s==> %s%s\n' "$C_STEP" "$*" "$C_RESET"; }
+die() { printf '%sERROR: %s%s\n' "$C_FAIL" "$*" "$C_RESET2" >&2; exit 1; }
+pass() { PASSES=$((PASSES + 1)); printf '%sPASS: %s%s\n' "$C_PASS" "$*" "$C_RESET"; }
+fail() { printf '%sFAIL: %s%s\n' "$C_FAIL" "$*" "$C_RESET2" >&2; FAILURES=$((FAILURES + 1)); }
+# One phrase under a block of output, saying what it shows.
+show() { printf -- '%s--> %s%s\n\n' "$C_SHOW" "$*" "$C_RESET"; }
+# The command a block of output came from. k is shown as kubectl.
+cmdline() { local c="$*"; printf '%s$ %s%s\n' "$C_CMD" "${c/#k /kubectl }" "$C_RESET"; }
 
 # check <description> <expected> <actual>
 check() {
   if [[ "$2" == "$3" ]]; then
     pass "$1"
   else
-    printf 'FAIL: %s (expected %s, got %s)\n' "$1" "$2" "$3" >&2
-    FAILURES=$((FAILURES + 1))
+    fail "$1 (expected $2, got $3)"
   fi
 }
 
@@ -32,14 +49,13 @@ expect() {
   if [[ "$2" =~ ^[0-9]+$ ]] && [ "$2" "$3" "$4" ]; then
     pass "$1 ($2 $3 $4)"
   else
-    printf 'FAIL: %s (got %s, wanted %s %s)\n' "$1" "${2:-nothing}" "$3" "$4" >&2
-    FAILURES=$((FAILURES + 1))
+    fail "$1 (got ${2:-nothing}, wanted $3 $4)"
   fi
 }
 
 finish() {
   if (( FAILURES > 0 )); then
-    printf '%d assertion(s) failed\n' "$FAILURES" >&2
+    printf '%s%d assertion(s) failed%s\n' "$C_FAIL" "$FAILURES" "$C_RESET2" >&2
     exit 1
   fi
 }
@@ -163,8 +179,9 @@ save_artifact() {
     mkdir -p "$dir/artifacts"
     dest="$dir/artifacts/$name.txt"
   fi
-  {
-    printf '$ %s    # %s\n' "$cmd" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    printf '%s\n' "$out"
-  } | tee "$dest"
+  local header
+  header="$cmd    # $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  printf '$ %s\n%s\n' "$header" "$out" > "$dest"
+  cmdline "$header"
+  printf '%s\n' "$out"
 }

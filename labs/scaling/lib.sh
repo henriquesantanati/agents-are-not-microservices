@@ -7,9 +7,6 @@ LAB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 METRICS_SERVER_CHART_VERSION=3.14.0
 KEDA_CHART_VERSION=2.20.2
 
-# One phrase under a block of output, saying what it shows.
-show() { printf -- '--> %s\n\n' "$*"; }
-
 # get <url> [key]: read a metrics document from inside the cluster, through the loadgen pod.
 # Three tries, because one slow answer from a dependency under load is not a finding.
 get() { retry 3 2 k -n "$NS" exec deploy/loadgen -- python3 /app/agent.py get "$@"; }

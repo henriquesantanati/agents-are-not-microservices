@@ -33,7 +33,10 @@ Every lab has the same six numbered scripts and its own namespace, and any lab r
 own. Run `00-setup.sh` before the numbered scripts, or run `run.sh`, which does. One
 `kind` cluster named `anm` serves all of them. The scripts say what they are doing on `==>`
 lines and what the output shows on `-->` lines, so you can follow without having seen the
-talk. If you read the code, start with `labs/probes`. The other four are the same scripts
+talk. On a terminal those lines are coloured, bold for the step, orange for what the output
+shows, blue for PASS and red for FAIL, a palette that holds for colour blind readers because
+no meaning rides on red against green. Set `NO_COLOR=1` to turn it off; logs and CI are
+plain anyway. If you read the code, start with `labs/probes`. The other four are the same scripts
 with different manifests.
 
 ## The labs
