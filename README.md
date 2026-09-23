@@ -39,6 +39,16 @@ no meaning rides on red against green. Set `NO_COLOR=1` to turn it off; logs and
 plain anyway. If you read the code, start with `labs/probes`. The other four are the same scripts
 with different manifests.
 
+When you are done with all of them, delete the shared cluster. That removes every lab
+namespace, metrics-server, KEDA and the `anm-*:dev` images in one go, and nothing else
+was left on the machine.
+
+```
+kind delete cluster --name anm                                  # Docker
+KIND_EXPERIMENTAL_PROVIDER=finch kind delete cluster --name anm  # Finch
+KIND_EXPERIMENTAL_PROVIDER=podman kind delete cluster --name anm # Podman
+```
+
 ## The labs
 
 | Lab | The default | What breaks |
