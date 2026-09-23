@@ -8,7 +8,7 @@ call, and on what a retry costs.
 ## The problem
 
 MCP dropped sessions in the `2026-07-28` revision. A server that keeps no state of its
-own needs no affinity: any replica answers anything. A server that mints a handle and
+own needs no affinity, because any replica answers anything. A server that mints a handle and
 keeps the matching state in its own memory is a different story. The next call lands on
 the other replica and the handle means nothing there.
 

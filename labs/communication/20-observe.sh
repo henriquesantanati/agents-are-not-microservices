@@ -14,12 +14,12 @@ show "Two replicas of mcp and two of a2a. Any of them can get the next call."
 run k -n "$NS" get service mcp a2a \
   -o custom-columns=NAME:.metadata.name,CLUSTER-IP:.spec.clusterIP,AFFINITY:.spec.sessionAffinity
 echo
-show "No session affinity anywhere. That is the point: nothing pins a caller to a replica."
+show "No session affinity anywhere. Nothing pins a caller to a replica, and that is the point."
 
 run k -n "$NS" get deployment mcp a2a \
   -o custom-columns=NAME:.metadata.name,SETTINGS:.spec.template.spec.containers[0].env[*].value
 echo
-show "The whole difference between the two states is here: local-handle or stateless, local or shared Tasks, idempotency off or on."
+show "The whole difference between the two states is in these three settings. Local handle or stateless, local or shared Tasks, idempotency off or on."
 
 run k -n "$NS" exec deploy/client -- python3 /app/agent.py whoami per-request 6
 echo
