@@ -4,11 +4,17 @@
   MODE=dependency  POST /call holds one of CAPACITY slots for CALL_SECONDS.
   MODE=load        POSTs RATE tasks per second to the agent, forever.
 
-  python3 agent.py get URL      print one metrics value or document, used by the lab scripts
+  python3 agent.py get URL [KEY]   print one metrics value or document, used by the lab scripts
 
 Both servers publish /metrics as JSON. Nothing scrapes them.
+
+The servers run on asyncio, one thread each. A waiting call costs a coroutine, not a
+thread, so the dependency's queue can climb into the thousands. The thread-per-connection
+version stopped at the container's pid limit (about 1060 on kind and Finch) and closed
+every new connection unanswered, which capped the queue and broke the metrics read.
 """
 
+import asyncio
 import json
 import os
 import socket
@@ -16,7 +22,7 @@ import sys
 import threading
 import time
 import urllib.request
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlsplit
 
 MODE = os.environ.get("MODE", "agent")
 PORT = int(os.environ.get("PORT", "8080"))
@@ -31,8 +37,6 @@ RATE = float(os.environ.get("RATE", "2"))
 DEPENDENCY_URL = os.environ.get("DEPENDENCY_URL", "http://dependency")
 AGENT_URL = os.environ.get("AGENT_URL", "http://agent")
 
-lock = threading.Lock()
-slots = threading.Semaphore(CAPACITY)
 counters = {
     "agent_downstream_calls_inflight": 0,
     "agent_tasks_received": 0,
@@ -43,18 +47,67 @@ counters = {
 
 
 def bump(name, delta):
-    with lock:
-        counters[name] += delta
+    # Single-threaded event loop, so a plain increment is atomic enough.
+    counters[name] += delta
 
 
-def downstream_call():
+# ---- minimal HTTP/1.1 over asyncio, enough for the lab's four routes ----
+
+async def read_request(reader):
+    line = await reader.readline()
+    if not line:
+        return None, None
+    method, path, _ = line.decode().split(" ", 2)
+    length = 0
+    while True:
+        header = await reader.readline()
+        if header in (b"\r\n", b"\n", b""):
+            break
+        name, _, value = header.decode().partition(":")
+        if name.strip().lower() == "content-length":
+            length = int(value)
+    if length:
+        await reader.readexactly(length)
+    return method, path
+
+
+async def write_response(writer, code, body):
+    data = json.dumps(body).encode()
+    reason = {200: "OK", 202: "Accepted", 404: "Not Found"}[code]
+    head = (f"HTTP/1.1 {code} {reason}\r\nContent-Type: application/json\r\n"
+            f"Content-Length: {len(data)}\r\nConnection: close\r\n\r\n").encode()
+    try:
+        writer.write(head + data)
+        await writer.drain()
+    except (BrokenPipeError, ConnectionResetError):
+        pass
+    finally:
+        writer.close()
+
+
+async def http_post(url, timeout):
+    # POST with an empty body, read the whole answer, close. No keep-alive on purpose:
+    # every call is its own connection, the shape a fan-out has on the wire.
+    u = urlsplit(url)
+    reader, writer = await asyncio.wait_for(
+        asyncio.open_connection(u.hostname, u.port or 80), timeout=timeout)
+    try:
+        writer.write((f"POST {u.path or '/'} HTTP/1.1\r\nHost: {u.hostname}\r\n"
+                      f"Content-Length: 0\r\nConnection: close\r\n\r\n").encode())
+        await writer.drain()
+        await asyncio.wait_for(reader.read(), timeout=timeout)
+    finally:
+        writer.close()
+
+
+# ---- the three roles ----
+
+async def downstream_call():
     bump("agent_downstream_calls_inflight", 1)
     try:
-        req = urllib.request.Request(f"{DEPENDENCY_URL}/call", method="POST")
-        with urllib.request.urlopen(req, timeout=900) as resp:
-            resp.read()
-    except OSError as err:
-        print(f"downstream call failed: {err}", flush=True)
+        await http_post(f"{DEPENDENCY_URL}/call", timeout=900)
+    except (OSError, asyncio.TimeoutError, asyncio.IncompleteReadError) as err:
+        print(f"downstream call failed: {err!r}", flush=True)
     finally:
         bump("agent_downstream_calls_inflight", -1)
 
@@ -62,66 +115,61 @@ def downstream_call():
 def run_task():
     # The agent decides the fan-out at run time. Here it is always FANOUT, all at once.
     for _ in range(FANOUT):
-        threading.Thread(target=downstream_call, daemon=True).start()
+        asyncio.ensure_future(downstream_call())
 
 
-def serve_call():
+slots = None  # asyncio.Semaphore(CAPACITY), created inside the loop
+
+
+async def serve_call():
     bump("dependency_queue_depth", 1)
-    with slots:
+    async with slots:
         bump("dependency_queue_depth", -1)
         bump("dependency_calls_inflight", 1)
-        time.sleep(CALL_SECONDS)
+        await asyncio.sleep(CALL_SECONDS)
         bump("dependency_calls_inflight", -1)
         bump("dependency_calls_served", 1)
 
 
-class Handler(BaseHTTPRequestHandler):
-    def reply(self, code, body):
-        data = json.dumps(body).encode()
-        try:
-            self.send_response(code)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(data)))
-            self.end_headers()
-            self.wfile.write(data)
-        except (BrokenPipeError, ConnectionResetError):
-            pass
-
-    def do_GET(self):
-        if self.path == "/metrics":
-            prefix = "agent_" if MODE == "agent" else "dependency_"
-            with lock:
-                body = {k: v for k, v in counters.items() if k.startswith(prefix)}
-            self.reply(200, {"pod": POD, **body})
-        elif self.path == "/health":
-            self.reply(200, {"pod": POD})
-        else:
-            self.reply(404, {"error": "not found"})
-
-    def do_POST(self):
-        if MODE == "agent" and self.path == "/task":
-            bump("agent_tasks_received", 1)
-            run_task()
-            self.reply(202, {"pod": POD, "accepted": True})
-        elif MODE == "dependency" and self.path == "/call":
-            serve_call()
-            self.reply(200, {"pod": POD})
-        else:
-            self.reply(404, {"error": "not found"})
-
-    def log_message(self, fmt, *args):
-        pass
+async def handle(reader, writer):
+    try:
+        method, path = await read_request(reader)
+    except (ValueError, asyncio.IncompleteReadError, ConnectionResetError):
+        writer.close()
+        return
+    if method is None:
+        writer.close()
+        return
+    if method == "GET" and path == "/metrics":
+        prefix = "agent_" if MODE == "agent" else "dependency_"
+        body = {k: v for k, v in counters.items() if k.startswith(prefix)}
+        await write_response(writer, 200, {"pod": POD, **body})
+    elif method == "GET" and path == "/health":
+        await write_response(writer, 200, {"pod": POD})
+    elif method == "POST" and MODE == "agent" and path == "/task":
+        bump("agent_tasks_received", 1)
+        run_task()
+        await write_response(writer, 202, {"pod": POD, "accepted": True})
+    elif method == "POST" and MODE == "dependency" and path == "/call":
+        await serve_call()
+        await write_response(writer, 200, {"pod": POD})
+    else:
+        await write_response(writer, 404, {"error": "not found"})
 
 
-class Server(ThreadingHTTPServer):
-    # Twenty calls arrive together per task. The default backlog of five would drop
-    # connections and turn the lab into a test of SYN retries.
-    request_queue_size = 1024
+async def serve_async():
+    global slots
+    slots = asyncio.Semaphore(CAPACITY)
+    # Twenty calls arrive together per task. The default backlog would drop connections
+    # and turn the lab into a test of SYN retries.
+    server = await asyncio.start_server(handle, "", PORT, backlog=4096)
+    print(f"{POD} serving on :{PORT} mode={MODE}", flush=True)
+    async with server:
+        await server.serve_forever()
 
 
 def serve():
-    print(f"{POD} serving on :{PORT} mode={MODE}", flush=True)
-    Server(("", PORT), Handler).serve_forever()
+    asyncio.run(serve_async())
 
 
 def post_task():
@@ -134,6 +182,7 @@ def post_task():
 
 
 def load():
+    # The agent answers 202 at once, so each post is a short-lived thread.
     print(f"{POD} sending {RATE} tasks per second to {AGENT_URL}", flush=True)
     interval = 1 / RATE
     next_at = time.monotonic()

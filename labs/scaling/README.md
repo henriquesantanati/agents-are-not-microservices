@@ -28,6 +28,13 @@ Both servers publish JSON on `/metrics`, `agent_downstream_calls_inflight` from 
 and `dependency_queue_depth` from the dependency. Nothing scrapes them. The scripts read
 them, KEDA reads one of them, and the assertions read the same numbers the scripts print.
 
+The servers run on asyncio, one thread each, so a waiting call costs a coroutine. The
+first version used a thread per connection and stopped at the container's pid limit,
+about 1060 on kind and Finch. Past that the dependency closed every new connection
+unanswered, the queue could not grow beyond roughly 1050, and the metrics read failed
+with a traceback. If a queue reading ever sits at that number, that is the ceiling and
+not the load.
+
 ## Run it
 
 The numbered scripts expect the cluster, namespace and image that `00-setup.sh` creates,
