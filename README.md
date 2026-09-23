@@ -58,9 +58,9 @@ Each link backs one claim in the talk.
 [Is a Pod the right deployment unit for an AI agent?](https://www.cncf.io/blog/2026/07/14/is-a-pod-the-right-deployment-unit-for-an-ai-agent/)
 Lin Sun's question, which the talk opens with.
 [Running agents on Kubernetes with Agent Sandbox](https://kubernetes.io/blog/2026/03/20/running-agents-on-kubernetes-with-agent-sandbox),
-[AWS AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime.html)
-and [kars](https://github.com/Azure/kars), Microsoft's agent reference stack for Kubernetes.
-Three runtimes for agents in five months, from SIG Apps and two vendors.
+[Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html)
+and [kars](https://github.com/Azure/kars), an agent reference stack for Kubernetes from
+Microsoft's Azure Cloud Native team. Three runtimes for agents, from SIG Apps and two vendors.
 [kagent](https://kagent.dev/docs). A controller owning the agent pod spec, which is where
 the talk lands. It stays out of the labs because with a controller there is no broken
 manifest left to apply.

@@ -1,7 +1,7 @@
 # Probes
 
 Kubernetes decides whether a pod is alive and whether it can take traffic by calling two
-HTTP endpoints, the liveness probe and the readiness probe. Most manifests point both at
+HTTP endpoints, the liveness probe and the readiness probe. Many manifests point both at
 the same `/health`. For a web service that is fine. For an agent that works on one task
 for minutes, it is wrong twice.
 

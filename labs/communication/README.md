@@ -22,8 +22,10 @@ removed sessions also removed stream resumability, so a client whose response st
 breaks has to reissue the request. The retry is not an edge case, it is in the spec.
 
 Then there is the client. One connection kept open for the life of the process pins you
-to one replica, because kube-proxy balances per connection. New replicas never see your
-traffic and a rollout kills your connection mid-task. A connection per call has neither
+to one replica, because kube-proxy balances per connection, and so does any L4 proxy in
+front of it. New replicas never see your traffic and a rollout kills your connection
+mid-task. An L7 proxy that balances per request, a service mesh sidecar for one, changes
+that picture. A connection per call has neither
 problem, and without sessions it costs a handshake and nothing else.
 
 ## The stub
