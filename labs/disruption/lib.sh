@@ -7,9 +7,6 @@ LAB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 POD=agent-0
 STEPS=90
 
-# One phrase under a block of output, saying what it shows.
-show() { printf -- '--> %s\n\n' "$*"; }
-
 uid_of() { k -n "$NS" get pod "$POD" -o jsonpath='{.metadata.uid}' 2>/dev/null; }
 step_of() { k -n "$NS" exec "$POD" -c agent -- python3 /app/agent.py status; }
 first_log_line() { k -n "$NS" logs "$POD" -c agent 2>/dev/null | head -n 1; }

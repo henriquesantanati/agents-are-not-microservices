@@ -5,9 +5,6 @@ source "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 NS=communication
 LAB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# One phrase under a block of output, saying what it shows.
-show() { printf -- '--> %s\n\n' "$*"; }
-
 # client <command...>: runs an agent.py client command inside the client pod.
 client() { k -n "$NS" exec deploy/client -- python3 /app/agent.py "$@"; }
 

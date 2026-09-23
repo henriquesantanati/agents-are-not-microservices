@@ -8,9 +8,6 @@ AGENT_PY="$LAB_DIR/agent/agent.py"
 # Task ids carry the process id, so a second run never reads the first run's spans.
 RUN="$$"
 
-# One phrase under a block of output, saying what it shows.
-show() { printf -- '--> %s\n\n' "$*"; }
-
 in_agent() { k -n "$NS" exec deploy/agent -- python3 /app/agent.py "$@"; }
 report() { python3 "$AGENT_PY" report "$OTEL_HOST_DIR" "$1"; }
 spans() { python3 "$AGENT_PY" spans "$OTEL_HOST_DIR" "$@"; }

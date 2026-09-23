@@ -4,7 +4,8 @@
 source "$(dirname "$0")/lib.sh"
 
 run() {
-  printf '\n$ %s\n' "$*" | sed 's/^\$ k /$ kubectl /'
+  echo
+  cmdline "$@"
   "$@" 2>&1 || true
 }
 
