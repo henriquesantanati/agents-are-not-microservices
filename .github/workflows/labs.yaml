@@ -47,8 +47,6 @@ jobs:
       - uses: helm/kind-action@v1
         with: { install_only: true }
       - uses: azure/setup-helm@v4
-      - run: |
-          lab=labs/${{ matrix.lab }}
-          if [ -x "$lab/run.sh" ]; then "$lab/run.sh"; else "$lab/00-setup.sh" && "$lab/40-verify.sh"; fi
+      - run: labs/${{ matrix.lab }}/run.sh
       - if: always()
         run: labs/${{ matrix.lab }}/99-teardown.sh
