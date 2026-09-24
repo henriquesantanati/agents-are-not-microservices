@@ -64,7 +64,7 @@ labs/<pillar>/
   30-fix.sh          applies the fixed manifest, shows the change, asserts it
   40-verify.sh       checks the fixed state as deployed, no redeploy
   99-teardown.sh
-  run.sh             10, 20, 30, 40 in order, stops at the first failure; what CI runs
+  run.sh             00-setup, then 10, 20, 30, 40; stops at the first failure; what CI runs
   agent/             the stub and its Dockerfile
   manifests/broken.yaml
   manifests/fixed.yaml
@@ -328,9 +328,6 @@ The KEDA `metrics-api` scaler reference lives in the scaling lab README, where i
 is to stop a reader copying a wrong field.
 
 ## Open risks
-
-Probes has this shape. The other four labs still run the earlier scripts, with `40-verify.sh`
-redeploying both states and no `run.sh`, and each follows in its own pull request.
 
 All five labs run end to end on `kind` through their own scripts, on Kubernetes 1.37, with
 rootless Podman, Docker and Finch on laptops and Docker on the GitHub runner. The hooks run
