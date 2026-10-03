@@ -312,8 +312,10 @@ sentence after saying what the link establishes. After the links, a table of the
 labs and which are ready.
 
 Links. Lin Sun's CNCF post, the Kubernetes agent-sandbox blog, AWS AgentCore
-Runtime, Microsoft kars, which is its Kubernetes agent runtime, and kagent documentation for the
-opener. The Kubernetes probes page. The Kubernetes PodDisruptionBudget page and Karpenter disruption concepts. The KEDA
+Runtime, Microsoft kars, which is its Kubernetes agent runtime, Google AX with Agent Substrate,
+and kagent documentation for the opener. The Kubernetes probes page. The Kubernetes
+PodDisruptionBudget page, Karpenter disruption concepts and the AX design page for suspend
+and resume. The KEDA
 project page. The MCP specification revision `2026-07-28` changelog for the removal of
 sessions, SEP-2567 for server-minted state handles, SEP-2575 for the handshake, the A2A
 task lifecycle, and the A2A Idempotency section. MCP SEP-414, the OpenTelemetry MCP
