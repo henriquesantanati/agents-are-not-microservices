@@ -71,6 +71,9 @@ Lin Sun's question, which the talk opens with.
 [Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html)
 and [kars](https://github.com/Azure/kars), an agent reference stack for Kubernetes from
 Microsoft's Azure Cloud Native team. Three runtimes for agents, from SIG Apps and two vendors.
+[AX](https://github.com/google/ax), an orchestrator for agent tasks from Google, built on
+[Agent Substrate](https://github.com/agent-substrate/substrate). Its README says agents are
+neither stateless microservices nor run-to-completion batch jobs, which is the talk's thesis.
 [kagent](https://kagent.dev/docs). A controller owning the agent pod spec, which is where
 the talk lands. It stays out of the labs because with a controller there is no broken
 manifest left to apply.
@@ -93,6 +96,10 @@ scaler's, so read it before copying the trigger.
 budget gates the eviction API and nothing else.
 [Karpenter disruption](https://karpenter.sh/docs/concepts/disruption/). `do-not-disrupt`,
 its duration form, and the NodePool `terminationGracePeriod`.
+[AX design](https://github.com/google/ax/blob/main/DESIGN.md). `SuspendTask` checkpoints the
+agent's state and `ResumeTask` continues from it, the checkpoint pattern built into the
+platform. Task state lives in Redis rather than in CRDs, because millions of short tasks
+would overload etcd.
 
 ### Communication
 
