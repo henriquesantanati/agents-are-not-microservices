@@ -9,7 +9,9 @@ STEPS=90
 
 uid_of() { k -n "$NS" get pod "$POD" -o jsonpath='{.metadata.uid}' 2>/dev/null; }
 step_of() { k -n "$NS" exec "$POD" -c agent -- python3 /app/agent.py status; }
-first_log_line() { k -n "$NS" logs "$POD" -c agent 2>/dev/null | head -n 1; }
+# sed reads the whole stream. head would exit after one line, and under pipefail the
+# SIGPIPE kubectl gets on its next write fails the script.
+first_log_line() { k -n "$NS" logs "$POD" -c agent 2>/dev/null | sed -n 1p; }
 restarts_of() { k -n "$NS" get pod "$POD" -o jsonpath='{.status.containerStatuses[0].restartCount}'; }
 started_at() { k -n "$NS" get pod "$POD" -o jsonpath='{.status.containerStatuses[0].state.running.startedAt}'; }
 last_reason() { k -n "$NS" get pod "$POD" -o jsonpath='{.status.containerStatuses[0].lastState.terminated.reason}'; }
