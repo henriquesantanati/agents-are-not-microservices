@@ -7,7 +7,7 @@ Cloud Native AI + Inference Day.
 
 Kubernetes was built for services that answer in milliseconds and hold no state between
 requests. An agent runs for minutes, keeps a task in memory, fans out to tools and other
-agents, and can finish with every span green and the wrong answer. Five defaults that work
+agents, and can finish with no error anywhere and the wrong answer. Five defaults that work
 for a microservice break for an agent. This repository has one lab per default.
 
 Each lab has a broken manifest and a fixed one. The scripts apply the broken one, show the
@@ -57,7 +57,7 @@ KIND_EXPERIMENTAL_PROVIDER=podman kind delete cluster --name anm # Podman
 | [scaling](labs/scaling) | HPA on CPU | The agent's CPU stays under target while its dependency queue grows |
 | [disruption](labs/disruption) | PodDisruptionBudget and a grace period | A 90 step chain is lost on every delete, and the PDB never sees it |
 | [communication](labs/communication) | Retry the call | Two replicas, one handle, and a charge that lands twice |
-| [observability](labs/observability) | A green trace means it worked | The A2A hop starts a new trace, and the killed pod exports nothing |
+| [observability](labs/observability) | No errors means it worked | The A2A hop starts a new trace, and the killed pod exports nothing |
 
 ## Sources
 

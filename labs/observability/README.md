@@ -2,7 +2,7 @@
 
 An agent answers by calling a tool and delegating a step to another agent. Tracing that
 means the context has to survive two hops, MCP and A2A, and the trace has to survive the
-pod. Neither is free, and even when both work the trace can be green and the answer wrong.
+pod. Neither is free, and even when both work the trace can hold no error and the answer can be wrong.
 
 ## The problem
 
@@ -17,7 +17,7 @@ proposals to fix it. Per-request HTTP instrumentation on both sides would carry
 gives you. The delegated step starts a trace of its own, and the picture of the request
 has a hole in it exactly where the agent asked another agent for help.
 
-Then the part no propagation fixes. Every span can be OK and the answer can still be
+Then the part no propagation fixes. Every span can end without an error and the answer can still be
 wrong, and nothing in the GenAI conventions puts a quality signal on a span. A
 `gen_ai.evaluation.result` event, emitted after the fact and parented to the span it
 scores, is where that signal goes.
@@ -55,7 +55,7 @@ so run it first. `run.sh` runs it for you.
 
 ```
 ./00-setup.sh      # cluster, namespace, image with the OpenTelemetry SDK
-./10-break.sh      # a green trace with the wrong answer, a split trace, a trace that never arrives
+./10-break.sh      # no errors and the wrong answer, a split trace, a trace that never arrives
 ./20-observe.sh    # the settings, the span files, one line per span, the evaluation events
 ./30-fix.sh        # one trace across both hops, a score on the span, a flushed interruption
 ./40-verify.sh     # checks the fixed state as deployed, exits non-zero on failure
@@ -72,7 +72,7 @@ killed halfway, and print every exported span.
 |---|---|---|
 | Agent span and MCP tool spans | One trace id, `invoke_agent` and `execute_tool` | Same. The MCP hop was never the problem |
 | The delegated step | A second trace id. Nothing carried the context across the A2A hop | The agent's trace id, carried in `message.metadata` |
-| The answer | Wrong, with every span OK and nothing saying so | Wrong, and a `gen_ai.evaluation.result` event on the agent span says `fail` |
+| The answer | Wrong, with no span in error and nothing saying so | Wrong, and a `gen_ai.evaluation.result` event on the agent span says `fail` |
 | Agent pod deleted mid-task | The trace id is in no file. The delete also waits out the full grace period | The span is in the file, `ERROR`, with an `agent.interrupted` event |
 
 SIGKILL still loses whatever the batch delay was holding, and the grace period has to
@@ -82,6 +82,29 @@ Each script prints what it is doing on `==>` lines, what the output shows on `--
 and one PASS or FAIL per check. `10-break.sh` fails if the problem stops reproducing,
 `30-fix.sh` and `40-verify.sh` fail if the fix stops working. `run.sh` runs setup and the
 four in order, and is what CI runs.
+
+## Going further
+
+Two more scripts, not part of `run.sh`.
+
+`50-explore.sh` runs against the fixed state. It checks that every span points at the
+right parent, not only that they share a trace id, then stops the agent three ways: a
+SIGTERM, a delete with no grace period, and a SIGKILL from the node. The SIGKILL loses the
+unfinished span even with the handler on.
+
+`60-outcomes.sh` runs four fixed tasks in a namespace of its own, `observability-outcomes`.
+On the trace they are all the same: one trace, five spans, HTTP 200, `UNSET`. Only the
+evaluation tells them apart.
+
+| Scenario | Answer | Evaluation |
+|---|---|---|
+| `correct_answer` | Paris | `pass`, 1.0 |
+| `wrong_answer` | Lyon | `fail`, 0.4 |
+| `injection_blocked` | Paris, but the tool result asks for another tool and the specialist proposes it | `pass`, 1.0, and an `anm.policy.decision` event: blocked |
+| `pods_unhealthy` | "All checkout pods are healthy.", after the tool reported 2 of 3 in CrashLoopBackOff | `fail`, 0.0 |
+
+The answers are fixtures, not a model. Each report is saved to
+`artifacts/outcome-<scenario>.json`.
 
 ## Sources
 

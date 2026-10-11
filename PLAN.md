@@ -217,8 +217,8 @@ instrumentation on client and server does carry `traceparent` by header, because
 JSON-RPC over one HTTP POST per message, and the stub uses none, which the README says.
 That header stops helping once the message outlives the request, in streaming, in a task
 resumed by a later request, and over gRPC, which is why both proposals put the context in
-the message itself. Every span can be OK and
-the answer wrong, and nothing in the GenAI conventions puts a quality signal on a span.
+the message itself. Every span can end without an error and
+the answer can be wrong, and nothing in the GenAI conventions puts a quality signal on a span.
 A `gen_ai.evaluation.result` event attached to the span after the fact carries one.
 And a span is only exported once it ends. The batching processor holds finished spans
 for up to five seconds by default, the Python SDK flushes them on `atexit`, and Python
@@ -238,7 +238,7 @@ The agent carries trace context in `params._meta` as the OpenTelemetry MCP conve
 define, and the server extracts it from there as the remote parent. HTTP headers alone
 are not enough, because the conventions say header propagation covers the request and
 not the individual MCP messages. The agent also delegates one step to the specialist
-over A2A. Break has three parts. The green trace with the wrong answer. The specialist's
+over A2A. Break has three parts. A trace with no errors and the wrong answer. The specialist's
 spans under a second trace id, because nothing carried the context across the JSON-RPC
 hop. And a pod deleted mid-task whose trace never reaches the file. Fix runs the
 evaluator, injects `traceparent` into the A2A message where #2103 and #2026 propose,

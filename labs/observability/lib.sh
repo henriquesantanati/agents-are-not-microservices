@@ -99,7 +99,7 @@ observe_broken() {
     "$(grep -h -c "0x$trace_id" "$OTEL_HOST_DIR"/spans-*.jsonl 2>/dev/null | awk '{s+=$1} END {print s+0}')"
   echo
 
-  log "BROKEN reproduced. Green trace, wrong answer, a second trace for the delegation, nothing for the killed task."
+  log "BROKEN reproduced. No errors, wrong answer, a second trace for the delegation, nothing for the killed task."
   echo
 }
 

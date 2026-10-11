@@ -78,6 +78,21 @@ and one PASS or FAIL per check. `10-break.sh` fails if the problem stops reprodu
 `30-fix.sh` and `40-verify.sh` fail if the fix stops working. `run.sh` runs setup and the
 four in order, and is what CI runs.
 
+## Going further
+
+`50-explore.sh` runs against the fixed state and shows what the fix leaves open. It is not
+part of `run.sh`.
+
+- The same `messageId` sent twice creates two Tasks. This stub does not deduplicate A2A.
+- A key claimed by a worker that dies before charging makes the retry a duplicate, and
+  nothing is charged. Claim and charge are two writes, so this is not exactly-once.
+- A charge whose response is lost and is reissued with a new request id, as MCP requires,
+  runs twice without a key and once with one.
+- A worker that checkpoints, charges and loses its pod: the new pod resumes the step and
+  charges again if the key was only in memory, and is told duplicate if the key was saved
+  with the checkpoint.
+- Restarting the store loses every Task in it. Shared is not durable.
+
 ## Sources
 
 [MCP 2026-07-28 changelog](https://modelcontextprotocol.io/specification/2026-07-28/changelog).
