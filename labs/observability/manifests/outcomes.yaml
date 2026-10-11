@@ -1,0 +1,136 @@
+# The fixed stubs for 60-outcomes.sh, in their own namespace and span directory. The
+# Downward API adds the namespace, pod UID, node and deployment to each span's resource.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: agent }
+  template:
+    metadata:
+      labels: { app: agent }
+    spec:
+      containers:
+        - name: agent
+          image: anm-observability:dev
+          imagePullPolicy: Never
+          env:
+            - { name: MODE, value: agent }
+            - { name: DEPLOYMENT_NAME, value: agent }
+            - name: POD_NAME
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
+            - name: POD_NAMESPACE
+              valueFrom: { fieldRef: { fieldPath: metadata.namespace } }
+            - name: POD_UID
+              valueFrom: { fieldRef: { fieldPath: metadata.uid } }
+            - name: NODE_NAME
+              valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
+            - { name: A2A_TRACE, value: "on" }
+            - { name: SIGTERM_FLUSH, value: "on" }
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet: { path: /health, port: 8080 }
+            periodSeconds: 2
+          volumeMounts:
+            - { name: otel, mountPath: /otel }
+      volumes:
+        - name: otel
+          hostPath: { path: /var/anm/otel/outcomes, type: Directory }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: mcp }
+  template:
+    metadata:
+      labels: { app: mcp }
+    spec:
+      containers:
+        - name: mcp
+          image: anm-observability:dev
+          imagePullPolicy: Never
+          env:
+            - { name: MODE, value: mcp }
+            - { name: DEPLOYMENT_NAME, value: mcp }
+            - name: POD_NAME
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
+            - name: POD_NAMESPACE
+              valueFrom: { fieldRef: { fieldPath: metadata.namespace } }
+            - name: POD_UID
+              valueFrom: { fieldRef: { fieldPath: metadata.uid } }
+            - name: NODE_NAME
+              valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet: { path: /health, port: 8080 }
+            periodSeconds: 2
+          volumeMounts:
+            - { name: otel, mountPath: /otel }
+      volumes:
+        - name: otel
+          hostPath: { path: /var/anm/otel/outcomes, type: Directory }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp
+spec:
+  selector: { app: mcp }
+  ports:
+    - { port: 80, targetPort: 8080 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: specialist
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: specialist }
+  template:
+    metadata:
+      labels: { app: specialist }
+    spec:
+      containers:
+        - name: specialist
+          image: anm-observability:dev
+          imagePullPolicy: Never
+          env:
+            - { name: MODE, value: specialist }
+            - { name: DEPLOYMENT_NAME, value: specialist }
+            - name: POD_NAME
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
+            - name: POD_NAMESPACE
+              valueFrom: { fieldRef: { fieldPath: metadata.namespace } }
+            - name: POD_UID
+              valueFrom: { fieldRef: { fieldPath: metadata.uid } }
+            - name: NODE_NAME
+              valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
+            - { name: A2A_TRACE, value: "on" }
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet: { path: /health, port: 8080 }
+            periodSeconds: 2
+          volumeMounts:
+            - { name: otel, mountPath: /otel }
+      volumes:
+        - name: otel
+          hostPath: { path: /var/anm/otel/outcomes, type: Directory }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: specialist
+spec:
+  selector: { app: specialist }
+  ports:
+    - { port: 80, targetPort: 8080 }

@@ -83,6 +83,29 @@ and one PASS or FAIL per check. `10-break.sh` fails if the problem stops reprodu
 `30-fix.sh` and `40-verify.sh` fail if the fix stops working. `run.sh` runs setup and the
 four in order, and is what CI runs.
 
+## Going further
+
+Two more scripts, not part of `run.sh`.
+
+`50-explore.sh` runs against the fixed state. It checks that every span points at the
+right parent, not only that they share a trace id, then stops the agent three ways: a
+SIGTERM, a delete with no grace period, and a SIGKILL from the node. The SIGKILL loses the
+unfinished span even with the handler on.
+
+`60-outcomes.sh` runs four fixed tasks in a namespace of its own, `observability-outcomes`.
+On the trace they are all the same: one trace, five spans, HTTP 200, `UNSET`. Only the
+evaluation tells them apart.
+
+| Scenario | Answer | Evaluation |
+|---|---|---|
+| `correct_answer` | Paris | `pass`, 1.0 |
+| `wrong_answer` | Lyon | `fail`, 0.4 |
+| `injection_blocked` | Paris, but the tool result asks for another tool and the specialist proposes it | `pass`, 1.0, and an `anm.policy.decision` event: blocked |
+| `pods_unhealthy` | "All checkout pods are healthy.", after the tool reported 2 of 3 in CrashLoopBackOff | `fail`, 0.0 |
+
+The answers are fixtures, not a model. Each report is saved to
+`artifacts/outcome-<scenario>.json`.
+
 ## Sources
 
 [SEP-414](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/414) and the
