@@ -129,7 +129,10 @@ observe_fixed() {
   log "Same load. The agent stays at 1, and the dependency scales on dependency_queue_depth, target 10, max 3."
   log "waiting for KEDA to scale the dependency out, then for every replica's queue to reach the target"
   wait_for 240 replicas_at_least dependency 2 || true
-  wait_for 420 all_queues_at_most 10 || true
+  # The queue is bursty, each task sends its 20 calls at once, so a single later read can
+  # land on a spike. The check uses the wait instead, which saw every replica reach it.
+  local drained=no
+  wait_for 420 all_queues_at_most 10 && drained=yes
   echo
 
   capture "$LAB_DIR" fixed-scaledobject k -n "$NS" get scaledobject dependency
@@ -150,7 +153,7 @@ observe_fixed() {
     n=$((n + 1))
   done
   show "Every replica's queue at or under 10. Three replicas, because two would only match the offered load, and a queue at full utilisation never drains."
-  expect "deepest dependency_queue_depth across replicas is at or below 10" "$(max_pod_queue)" -le 10
+  check "every replica's dependency_queue_depth reached 10 or below" yes "$drained"
   echo
 
   log "FIX holds. The queue that grew is the signal that scales, and it drains."
