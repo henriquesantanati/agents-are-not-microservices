@@ -82,6 +82,10 @@ manifest left to apply.
 
 [Liveness, readiness and startup probes](https://kubernetes.io/docs/concepts/workloads/pods/probes/).
 Liveness restarts the container. Readiness only removes the pod from the Service.
+[LangGraph Agent Server](https://docs.langchain.com/langgraph-platform/langgraph-server).
+It runs separate tasks at the same time by default, up to 10 per worker, and only one at a
+time within a single conversation thread. A pod that looks free keeps taking tasks and runs
+them all at once.
 
 ### Scaling
 
