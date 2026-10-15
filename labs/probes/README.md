@@ -22,8 +22,10 @@ take another task" means for your agent, so `/ready` is yours to write. Here it 
 
 `agent/agent.py` runs in two modes. In `async` mode the task runs in a background thread
 and both endpoints keep answering while it works. In `blocking` mode the task runs inside
-the request and nothing answers until it finishes. Each pod holds one task at a time. The
-lab runs one pod of each.
+the request and nothing answers until it finishes. Each pod is built for one task
+(`MAX_TASKS=1`), and `/ready` uses that number. In `async` mode nothing else stops a second
+task, so it runs alongside the first. In `blocking` mode the next task waits until the
+first one finishes. The lab runs one pod of each.
 
 ## Run it
 
