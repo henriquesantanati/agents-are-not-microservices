@@ -25,8 +25,8 @@ Then there is the client. One connection kept open for the life of the process p
 to one replica, because kube-proxy balances per connection, and so does any L4 proxy in
 front of it. New replicas never see your traffic and a rollout kills your connection
 mid-task. An L7 proxy that balances per request, a service mesh sidecar for one, changes
-that picture. A connection per call has neither
-problem, and without sessions it costs a handshake and nothing else.
+that picture. A connection per call avoids both problems. Without sessions, the only
+extra cost is a handshake.
 
 ## The stub
 
@@ -70,8 +70,8 @@ answers, with the replica names in it.
 | The same charge, sent twice | Two lines in the side effect log | One |
 
 The fixed state adds the client. Twenty calls over one persistent connection all name the
-same replica. Twenty calls with a connection per request name both. Nothing in the server
-config changes that, which is why it is in the lab.
+same replica. Twenty calls with a connection per request name both. Both client modes
+use the same server config; only the connection pattern changes.
 
 Each script prints what it is doing on `==>` lines, what the output shows on `-->` lines,
 and one PASS or FAIL per check. `10-break.sh` fails if the problem stops reproducing,
@@ -102,5 +102,5 @@ is the server-minted handle this lab models.
 
 [Life of a Task](https://a2a-protocol.org/latest/topics/life-of-a-task/) and the
 [A2A specification](https://a2a-protocol.org/latest/specification/). Tasks outlive the
-request, and Send Message may be idempotent through `messageId`. May, so the server
-decides.
+request, and Send Message may be idempotent through `messageId`. The server decides
+whether to deduplicate.
