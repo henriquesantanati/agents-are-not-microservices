@@ -61,27 +61,13 @@ KIND_EXPERIMENTAL_PROVIDER=podman kind delete cluster --name anm # Podman
 
 ## Sources
 
-Each link backs one claim in the talk.
-
-### The opener
-
-[Is a Pod the right deployment unit for an AI agent?](https://www.cncf.io/blog/2026/07/14/is-a-pod-the-right-deployment-unit-for-an-ai-agent/)
-Lin Sun's question, which the talk opens with.
-[Running agents on Kubernetes with Agent Sandbox](https://kubernetes.io/blog/2026/03/20/running-agents-on-kubernetes-with-agent-sandbox),
-[Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html)
-and [kars](https://github.com/Azure/kars), an agent reference stack for Kubernetes from
-Microsoft's Azure Cloud Native team. Three runtimes for agents, from SIG Apps and two vendors.
-[AX](https://github.com/google/ax), an orchestrator for agent tasks from Google, built on
-[Agent Substrate](https://github.com/agent-substrate/substrate). Its README says agents are
-neither stateless microservices nor run-to-completion batch jobs, which is the talk's thesis.
-[kagent](https://kagent.dev/docs). A controller owning the agent pod spec, which is where
-the talk lands. It stays out of the labs because with a controller there is no broken
-manifest left to apply.
+Each link backs one claim in the talk or the labs.
 
 ### Probes
 
 [Liveness, readiness and startup probes](https://kubernetes.io/docs/concepts/workloads/pods/probes/).
 Liveness restarts the container. Readiness only removes the pod from the Service.
+
 [LangGraph Agent Server](https://docs.langchain.com/langgraph-platform/langgraph-server).
 It runs separate tasks at the same time by default, up to 10 per worker, and only one at a
 time within a single conversation thread. A pod that looks free keeps taking tasks and runs
@@ -97,43 +83,99 @@ scaler's, so read it before copying the trigger.
 ### Disruption
 
 [PodDisruptionBudget](https://kubernetes.io/docs/tasks/run-application/configure-pdb/). A
-budget gates the eviction API and nothing else.
-[Karpenter disruption](https://karpenter.sh/docs/concepts/disruption/). `do-not-disrupt`,
-its duration form, and the NodePool `terminationGracePeriod`.
+budget applies to the eviction API and to nothing else.
+
+[Karpenter disruption](https://karpenter.sh/docs/concepts/disruption/). It covers
+`do-not-disrupt`, its duration form, and the NodePool `terminationGracePeriod`.
+
 [AX design](https://github.com/google/ax/blob/main/DESIGN.md). `SuspendTask` checkpoints the
-agent's state and `ResumeTask` continues from it, the checkpoint pattern built into the
-platform. Task state lives in Redis rather than in CRDs, because millions of short tasks
-would overload etcd.
+agent's state and `ResumeTask` continues from it, so the platform has the checkpoint pattern
+built in. Task state lives in Redis, because millions of short tasks in CRDs would overload
+etcd.
 
 ### Communication
 
+[MCP transports](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports).
+Over Streamable HTTP every message is an HTTP POST to one endpoint, so a retried tool call
+is a second POST.
+
+[MCP tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools). Tools are
+model-controlled, so the model decides which tool to call.
+
 [MCP 2026-07-28 changelog](https://modelcontextprotocol.io/specification/2026-07-28/changelog).
-Sessions are gone. [SEP-2567](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2567)
-replaces them with server-minted handles passed as tool arguments.
-[SEP-2575](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2575) removes
+Sessions are gone.
+
+[SEP-2567](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2567). It replaces
+sessions with server-minted handles passed as tool arguments.
+
+[SEP-2575](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2575). It removes
 the handshake, so every request carries its protocol version in `_meta`.
+
+[Making retries safe with idempotent APIs](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/).
+The caller sends a unique request identifier and reuses it on every retry, so the service
+can answer a retry with the first result instead of acting twice. The lab's action key does
+the same job.
+
 [Life of a Task](https://a2a-protocol.org/latest/topics/life-of-a-task/). A2A Tasks outlive
-the request and need a shared store. The
-[A2A specification](https://a2a-protocol.org/latest/specification/) says Send Message may
-be idempotent through `messageId`. The server decides.
+the request and need a shared store.
+
+[A2A specification](https://a2a-protocol.org/latest/specification/). Send Message may be
+idempotent through `messageId`, and the server decides whether it is.
 
 ### Observability
+
+[AI Agent Observability - Evolving Standards and Best Practices](https://opentelemetry.io/blog/2025/ai-agent-observability/).
+The OpenTelemetry blog says that for an AI agent, "given its non-deterministic nature,
+telemetry is also used as a feedback loop" for evaluation tools.
 
 [SEP-414](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/414) and the
 [OpenTelemetry MCP conventions](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/mcp.md).
 Trace context travels in `params._meta`. HTTP headers cover the request and not the
 messages inside it.
+
 [GenAI events](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-events.md).
-`gen_ai.evaluation.result`, parented to the span it scores. Every GenAI convention is still
-marked Development.
+`gen_ai.evaluation.result` is parented to the span it scores. Every GenAI convention is
+still marked Development.
+
 [A2A #2103](https://github.com/a2aproject/A2A/issues/2103) and
-[#2026](https://github.com/a2aproject/A2A/issues/2026). Open proposals to carry trace
-context in message metadata. The
+[#2026](https://github.com/a2aproject/A2A/issues/2026). Both are open proposals to carry
+trace context in message metadata. The
 [a2a-python client transports](https://github.com/a2aproject/a2a-python/tree/main/src/a2a/client/transports)
 inject none today.
+
 [Batching span processor](https://opentelemetry.io/docs/specs/otel/trace/sdk/#batching-processor).
-Finished spans wait up to five seconds. [atexit](https://docs.python.org/3/library/atexit.html)
-does not run when a signal kills the process, so a killed pod loses them.
+Finished spans wait up to five seconds before export.
+
+[atexit](https://docs.python.org/3/library/atexit.html). It does not run when a signal kills
+the process, so a killed pod loses the spans still waiting.
+
+## Where agents run
+
+The labs run agents as plain pods with standard Kubernetes objects. These projects build a
+runtime for agents instead, and each one is worth reading next to the labs.
+
+[Is a Pod the right deployment unit for an AI agent?](https://www.cncf.io/blog/2026/07/14/is-a-pod-the-right-deployment-unit-for-an-ai-agent/)
+Lin Sun describes how kagent went from one runtime hosting many agents, to a Pod per
+agent, to Agent Substrate, where an agent runs as an actor scheduled onto long-running
+worker pods.
+
+[Agent Substrate](https://github.com/agent-substrate/substrate). It is the control plane
+above Kubernetes that places those actors. Google's [AX](https://github.com/google/ax), an
+orchestrator for agent tasks, is built on it, and its README says agents are neither
+stateless microservices nor run-to-completion batch jobs.
+
+[kagent](https://kagent.dev/docs). You declare an agent as a Kubernetes custom resource,
+and its controller runs it.
+
+[Running agents on Kubernetes with Agent Sandbox](https://kubernetes.io/blog/2026/03/20/running-agents-on-kubernetes-with-agent-sandbox).
+A new abstraction from SIG Apps, still in development, for agents that run for a long
+time and keep their context.
+
+[Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html).
+A managed runtime that gives each agent session its own isolated environment.
+
+[kars](https://github.com/Azure/kars). An agent reference stack for Kubernetes from
+Microsoft, with one hardened sandbox per agent.
 
 ## License
 
