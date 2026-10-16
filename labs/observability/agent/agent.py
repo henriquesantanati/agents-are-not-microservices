@@ -40,8 +40,8 @@ SIGTERM_FLUSH = os.environ.get("SIGTERM_FLUSH", "off")
 MCP_URL = os.environ.get("MCP_URL", "http://mcp")
 SPECIALIST_URL = os.environ.get("SPECIALIST_URL", "http://specialist")
 
-# Where #2103 and #2026 propose the context travels: message.metadata under the URI of
-# an extension. The URI is ours. The protocol has nothing normative here yet.
+# Issues #2103 and #2026 propose carrying context in message.metadata under an
+# extension URI. The URI is ours. The protocol has nothing normative here yet.
 TRACE_EXTENSION_URI = "https://github.com/henriquesantanati/agents-are-not-microservices/extensions/a2a-trace-context/v1"
 
 QUESTION = "What is the capital of France?"

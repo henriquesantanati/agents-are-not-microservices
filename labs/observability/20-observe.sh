@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# The commands that show why. Run it after 10-break.sh or 30-fix.sh. It asserts nothing.
+# Shows the settings, span files, and evaluation events. Run it after 10-break.sh or
+# 30-fix.sh. It asserts nothing.
 source "$(dirname "$0")/lib.sh"
 
 run() {
