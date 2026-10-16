@@ -3,7 +3,8 @@
 Kubernetes decides whether a pod is alive and whether it can take traffic by calling two
 HTTP endpoints, the liveness probe and the readiness probe. Many manifests point both at
 the same `/health`. For a web service that is fine. For an agent that works on one task
-for minutes, it is wrong twice.
+for minutes, `/health` gives the wrong answer about when it can take work and when it
+needs a restart.
 
 ## The problem
 
