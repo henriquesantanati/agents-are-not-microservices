@@ -1,7 +1,7 @@
 # Karpenter reference
 
-These manifests are not run. Karpenter provisions cloud nodes and cannot run on `kind`.
-They are here so the pattern has a complete, copyable form.
+Karpenter provisions cloud nodes and cannot run on `kind`, so no script applies these
+manifests. They show the complete, copyable pattern.
 
 `nodepool.yaml` sets `terminationGracePeriod` on the NodePool, so a pod annotated
 `karpenter.sh/do-not-disrupt` can delay a node's disruption but never block it forever.
