@@ -124,6 +124,11 @@ idempotent through `messageId`, and the server decides whether it is.
 
 ### Observability
 
+[Observability patterns for AI agents on Amazon EKS](https://aws.amazon.com/blogs/containers/observability-patterns-for-ai-agents-on-amazon-eks/).
+The AWS Containers blog says that "an HTTP 200 response from an agent's endpoint says
+nothing about whether the agent reasoned correctly, chose the right tools, or stayed within
+budget."
+
 [AI Agent Observability - Evolving Standards and Best Practices](https://opentelemetry.io/blog/2025/ai-agent-observability/).
 The OpenTelemetry blog says that for an AI agent, "given its non-deterministic nature,
 telemetry is also used as a feedback loop" for evaluation tools.
