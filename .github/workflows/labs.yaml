@@ -48,5 +48,10 @@ jobs:
         with: { install_only: true }
       - uses: azure/setup-helm@v4
       - run: labs/${{ matrix.lab }}/run.sh
+      - name: scripts numbered 50 and up
+        env: { LAB: "${{ matrix.lab }}" }
+        run: |
+          shopt -s nullglob
+          for s in labs/"$LAB"/[5-8][0-9]-*.sh; do "$s"; done
       - if: always()
         run: labs/${{ matrix.lab }}/99-teardown.sh

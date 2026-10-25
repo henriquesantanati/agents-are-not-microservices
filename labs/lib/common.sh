@@ -12,9 +12,9 @@ FAILURES=0
 PASSES=0
 
 # Colour, only when the output is a terminal and NO_COLOR is unset. The words carry the
-# meaning on their own, so a log file or CI reads the same. The palette keeps meaning off
-# red versus green: PASS is blue, FAIL and ERROR are bold red, the --> phrase is orange,
-# the ==> step is bold, and the $ command line is dim so the output under it stands out.
+# meaning on their own, so a log file or CI reads the same. No meaning depends on telling
+# red from green. PASS is blue, FAIL and ERROR are bold red, the --> phrase is orange, the
+# ==> step is bold, and the $ command line is dim so the output under it stands out.
 if [[ -z "${NO_COLOR:-}" && -t 1 ]]; then
   # 256-colour values picked to read on a dark and a light background alike.
   C_STEP=$'\e[1m'        C_SHOW=$'\e[38;5;166m' C_PASS=$'\e[38;5;32m'

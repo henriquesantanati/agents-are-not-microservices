@@ -8,7 +8,7 @@ Cloud Native AI + Inference Day.
 Kubernetes was built for services that answer in milliseconds and hold no state between
 requests. An agent runs for minutes, keeps a task in memory, fans out to tools and other
 agents, and can finish with no error anywhere and the wrong answer. Five defaults that work
-for a microservice break for an agent. This repository has one lab per default.
+for a microservice break for an agent, and this repository has one lab for each.
 
 Each lab has a broken manifest and a fixed one. The scripts apply the broken one, show the
 symptom, apply the fixed one, and assert both states. A break that stops reproducing fails
@@ -17,7 +17,7 @@ the build.
 ## Running it
 
 You need Docker, Podman or Finch, `kind`, `kubectl`, `helm` and Python 3.12. Everything runs on a
-laptop. No GPU, no model, no cloud account.
+laptop, with no GPU, no model and no cloud account.
 
 ```
 labs/probes/00-setup.sh     # creates the cluster if it is missing
@@ -29,24 +29,38 @@ labs/probes/99-teardown.sh  # deletes the lab's namespace, keeps the cluster
 labs/probes/run.sh          # setup, then 10, 20, 30 and 40 in one go, stops at the first failure
 ```
 
-Every lab has the same six numbered scripts and its own namespace, and any lab runs on its
-own. Run `00-setup.sh` before the numbered scripts, or run `run.sh`, which does. One
-`kind` cluster named `anm` serves all of them. The scripts say what they are doing on `==>`
-lines and what the output shows on `-->` lines, so you can follow without having seen the
-talk. On a terminal those lines are coloured, bold for the step, orange for what the output
-shows, blue for PASS and red for FAIL, a palette that holds for colour blind readers because
-no meaning rides on red against green. Set `NO_COLOR=1` to turn it off; logs and CI are
-plain anyway. If you read the code, start with `labs/probes`. The other four are the same scripts
-with different manifests.
+Every lab has these six numbered scripts and its own namespace, and any lab runs on its own.
+The communication and observability labs add scripts numbered 50 and up, which go further
+than the fix. `run.sh` leaves them out, and CI runs them after it. Run `00-setup.sh` before
+the numbered scripts, or run `run.sh`, which does. One `kind` cluster named `anm` serves all
+of them.
+
+The scripts say what they are doing on `==>` lines and what the output shows on `-->` lines,
+so you can follow without having seen the talk. On a terminal the step is bold, the `-->`
+phrase is orange, PASS is blue and FAIL is red. No meaning depends on telling red from
+green, so the colours work for colour blind readers. Set `NO_COLOR=1` to turn them off.
+Logs and CI get plain text anyway.
+
+If you read the code, start with `labs/probes`. The other four follow the same script
+layout, each with its own stub agent, helpers and manifests.
 
 When you are done with all of them, delete the shared cluster. That removes every lab
-namespace, metrics-server, KEDA and the `anm-*:dev` images in one go, and nothing else
-was left on the machine.
+namespace, metrics-server and KEDA in one go.
 
 ```
 kind delete cluster --name anm                                  # Docker
 KIND_EXPERIMENTAL_PROVIDER=finch kind delete cluster --name anm  # Finch
 KIND_EXPERIMENTAL_PROVIDER=podman kind delete cluster --name anm # Podman
+```
+
+Three things stay on the laptop after that. The setup scripts build the `anm-*:dev` images
+in your container runtime before loading them into the cluster, so a copy stays there. The
+observability lab writes its spans to `.anm/otel` in the repository, and every lab writes
+its captures to its own `artifacts/` directory. From the repository root:
+
+```
+docker rmi docker.io/library/anm-{probes,scaling,disruption,communication,observability}:dev   # or podman, or finch
+rm -rf .anm labs/*/artifacts
 ```
 
 ## The labs
