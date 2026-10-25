@@ -112,7 +112,7 @@ observe_fixed() {
   echo
 
   call fixed-client-per-request whoami per-request 20
-  show "A connection per call reaches both. Without sessions that costs a handshake and nothing else."
+  show "A connection per call reaches both. Without sessions, the extra cost is a handshake."
   check "per-request client: calls name both replicas" 2 "$(json_field 'len(d["distinct_replicas"])' <<<"$REPLY")"
   echo
 
