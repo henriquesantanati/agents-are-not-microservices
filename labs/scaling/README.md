@@ -10,8 +10,8 @@ without limit, and a KEDA ScaledObject on the dependency's own queue that drains
 An agent waiting on a dependency burns almost no CPU, so a CPU autoscaler on the agent
 never fires. Scaling the agents on any other signal does not help either. The load on the
 dependency is the incoming rate times the fan-out, so more agents just spread the same
-calls across more callers. What you want to scale is whatever queue is growing, on that
-queue.
+calls across more callers. Scale the tier with the growing queue, using that queue as
+the signal.
 
 ## The stub
 
