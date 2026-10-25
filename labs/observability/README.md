@@ -14,20 +14,19 @@ The A2A hop is not. The specification lists tracing under design goals and stops
 the Python SDK's client transports inject nothing, and issues #2103 and #2026 are open
 proposals to fix it. Per-request HTTP instrumentation on both sides would carry
 `traceparent` in the header, and this stub has none, so what you see is what the protocol
-gives you. The delegated step starts a trace of its own, and the picture of the request
-has a hole in it exactly where the agent asked another agent for help.
+gives you. The delegated step starts a trace of its own, so the request trace stops
+where the agent delegated the step.
 
-Then the part no propagation fixes. Every span can end without an error and the answer can still be
-wrong, and nothing in the GenAI conventions puts a quality signal on a span. A
-`gen_ai.evaluation.result` event, emitted after the fact and parented to the span it
-scores, is where that signal goes.
+Every span can end without an error even when the answer is wrong. The GenAI
+conventions do not put a quality signal on a span. A `gen_ai.evaluation.result` event,
+emitted after the fact and parented to the span it scores, is where that signal goes.
 
-And a span only exists once it ends. The batching processor holds finished spans for up
-to five seconds, and the Python SDK flushes them on `atexit`, which a signal skips. Kill
-a pod mid-task and you lose the buffered spans and the span of the task it was running,
-because that one never ended. On `kind` the delete takes the whole grace period too:
-Python is PID 1, and PID 1 is not sent a signal it has no handler for, so nothing happens
-until the SIGKILL.
+A span only exists once it ends. The batching processor holds finished spans
+for up to five seconds, and the Python SDK flushes them on `atexit`, which a signal
+skips. Kill a pod mid-task and you lose the buffered spans and the span of the
+task it was running, because that one never ended. On `kind` the delete takes the
+whole grace period too. Python is PID 1, and PID 1 is not sent a signal it has no
+handler for, so nothing happens until the SIGKILL.
 
 ## The stub
 
@@ -122,5 +121,5 @@ follows. The [a2a-python client transports](https://github.com/a2aproject/a2a-py
 inject nothing today.
 
 [Batching span processor](https://opentelemetry.io/docs/specs/otel/trace/sdk/#batching-processor)
-and [atexit](https://docs.python.org/3/library/atexit.html). Five seconds of finished
-spans, and a signal that skips the flush.
+and [atexit](https://docs.python.org/3/library/atexit.html). The batching processor can
+hold finished spans for five seconds, and a signal can skip the `atexit` flush.
