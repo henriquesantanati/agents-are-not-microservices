@@ -82,7 +82,7 @@ observe_broken() {
   check "blocking pod restarted mid-task, liveness could not get an answer" $((r0 + 1)) "$(restarts_of "$blocking")"
   echo
 
-  log "BROKEN reproduced. The async pod lied, the blocking pod died."
+  log "BROKEN reproduced. The async pod stayed Ready while busy; the blocking pod restarted mid-task."
   echo
 }
 
@@ -105,7 +105,7 @@ observe_fixed() {
   capture "$LAB_DIR" fixed-get-pod-busy k -n "$NS" get pod "$async"
   capture "$LAB_DIR" fixed-endpointslice-busy k -n "$NS" get endpointslice -l kubernetes.io/service-name=agent-async \
     -o custom-columns=POD:.endpoints[*].targetRef.name,READY:.endpoints[*].conditions.ready
-  show "0/1 and out of the Service while it works. No restart, nothing lost."
+  show "0/1 and out of the Service while it works. The pod does not restart, and its task keeps running."
   check "async pod is mid-task" 1 "$(inflight_of "$async")"
   check "async pod is not Ready mid-task" False "$(ready_of "$async")"
   check "async pod is not a ready endpoint of the Service" false "$(endpoint_ready agent-async "$async")"
@@ -117,7 +117,7 @@ observe_fixed() {
   echo
 
   capture "$LAB_DIR" fixed-get-pod-idle k -n "$NS" get pod "$async"
-  show "Task done, back to 1/1 on its own."
+  show "When the task finishes, the pod returns to 1/1 on its own."
   check "async pod is idle" 0 "$(inflight_of "$async")"
   check "async pod is Ready again" True "$(ready_of "$async")"
   check "async pod is a ready endpoint again" true "$(endpoint_ready agent-async "$async")"
