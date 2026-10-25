@@ -31,8 +31,9 @@ labs/probes/run.sh          # setup, then 10, 20, 30 and 40 in one go, stops at 
 
 Every lab has these six numbered scripts and its own namespace, and any lab runs on its own.
 The communication and observability labs add scripts numbered 50 and up, which go further
-than the fix and are not part of `run.sh`. Run `00-setup.sh` before the numbered scripts, or
-run `run.sh`, which does. One `kind` cluster named `anm` serves all of them.
+than the fix. `run.sh` leaves them out, and CI runs them after it. Run `00-setup.sh` before
+the numbered scripts, or run `run.sh`, which does. One `kind` cluster named `anm` serves all
+of them.
 
 The scripts say what they are doing on `==>` lines and what the output shows on `-->` lines,
 so you can follow without having seen the talk. On a terminal the step is bold, the `-->`

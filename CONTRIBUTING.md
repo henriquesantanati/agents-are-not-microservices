@@ -36,7 +36,8 @@ into a race.
 `10-break.sh` asserts the broken state and `30-fix.sh` the fixed one, so a problem that
 stops reproducing fails as loudly as a fix that stops working. `40-verify.sh` checks the
 fixed state as deployed, without redeploying. `run.sh` runs `00-setup.sh` and then `10`,
-`20`, `30` and `40`, and stops at the first failure. CI runs `run.sh`.
+`20`, `30` and `40`, and stops at the first failure. CI runs `run.sh`, then the scripts
+numbered 50 and up.
 
 Scripts say what they do on `==>` lines and what the output shows on `-->` lines, one
 short phrase per block of output. Someone who never saw the talk has to be able to follow.
