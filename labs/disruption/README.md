@@ -66,7 +66,7 @@ line of the replacement says whether the chain started over.
 | Eviction API | `429 Too Many Requests`, `Cannot evict pod as it would violate the pod's disruption budget` | Same. The budget is not what changed |
 | `kubectl delete pod`, grace 30 | Old pod: `SIGTERM received at step 5, finishing the chain (85 steps left)`. Killed 30 seconds later. Replacement: `start chain at step 0 of 90, checkpointing disabled` | Old pod: `preStop hook called at step 14`, then `SIGTERM received, checkpointed at step 14, exiting`. Replacement, three seconds later: `resume chain at step 14 of 90 from checkpoint` |
 | `kubectl delete pod`, grace 120 | Two minutes in Terminating, then the same `start chain at step 0` | Not run. The fixed agent leaves on SIGTERM, so the grace period is never used |
-| OOM kill | Not run | `lastState.terminated` reads `OOMKilled`, exit code 137. The dead container's log ends in periodic checkpoints, no preStop, no SIGTERM. The restart resumes from the last of them |
+| OOM kill | Not run | `lastState.terminated` shows exit code 137, which is SIGKILL. The dead container's log ends in periodic checkpoints, no preStop, no SIGTERM. The restart resumes from the last of them |
 | `kill -9 1` from inside | Not run | `kill exit=0`, and the chain keeps going. Same container, same restart count |
 
 The broken agent uses the whole grace period because its handler keeps working. Take the

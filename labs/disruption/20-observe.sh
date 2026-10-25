@@ -18,7 +18,7 @@ show "The grace period and the preStop hook, if there is one. Both only matter o
 
 run k -n "$NS" get pod "$POD" -o jsonpath='{.status.containerStatuses[0].lastState}{"\n"}'
 echo
-show "Empty until something killed the container in place. After the OOM kill in 30-fix.sh it reads OOMKilled, exit code 137."
+show "Empty until something killed the container in place. After the OOM kill in 30-fix.sh it shows exit code 137."
 
 run k -n "$NS" logs "$POD" -c agent --tail=5
 echo
