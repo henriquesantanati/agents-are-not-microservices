@@ -54,7 +54,7 @@ so run it first. `run.sh` runs it for you.
 ```
 
 `10-break.sh` takes about three minutes, most of it waiting out the 120 second grace
-period. That wait is the point.
+period. The wait shows what happens when the grace period expires.
 
 ## What to look for
 
@@ -74,8 +74,9 @@ handler away and it still would. Python runs as PID 1, and PID 1 is never sent a
 has no handler for, so nothing happens until the SIGKILL. The observability lab shows that
 case.
 
-So preStop and SIGTERM are two spellings of the same voluntary path. SIGKILL skips both,
-and only the periodic checkpoint bounds what you lose when it does.
+On the voluntary path, preStop asks the agent to checkpoint, and the SIGTERM handler
+checkpoints as it exits. SIGKILL skips both, so only the periodic checkpoint bounds what
+you lose when it does.
 
 That same kill also drops the trace that would have explained it. The observability lab is
 where the OpenTelemetry SDK lives, and it demonstrates both the loss and the fix.

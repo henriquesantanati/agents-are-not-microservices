@@ -95,13 +95,13 @@ lose_chain() {
   echo
 
   old_pod_log "broken-grace-$grace-old-pod-log"
-  show "It says it will finish. It cannot, and nothing checkpoints while it tries."
+  show "The agent says it will finish inside the grace period, but it cannot. It writes no checkpoint while it tries."
   check "the agent tries to finish the chain inside the grace period (grace $grace)" 1 \
     "$(grep -c 'finishing the chain' <<<"$OLD_LOG" || true)"
   echo
 
   capture "$LAB_DIR" "broken-grace-$grace-replacement-log" k -n "$NS" logs "$POD" -c agent
-  show "The replacement came up $((SECONDS - t0))s after the delete and starts from zero. The grace period bought time and saved nothing."
+  show "The replacement came up $((SECONDS - t0))s after the delete and starts from zero. The grace period delayed the restart without saving progress."
   check "replacement starts the chain from step 0 (grace $grace)" 0 "$(start_step)"
   echo
 }
@@ -166,12 +166,12 @@ observe_fixed() {
 
   capture "$LAB_DIR" fixed-oom-last-state k -n "$NS" get pod "$POD" \
     -o jsonpath='{.status.containerStatuses[0].lastState.terminated}{"\n"}'
-  show "OOMKilled, exit code 137. The kernel sent SIGKILL and asked nobody."
+  show "OOMKilled, exit code 137. The kernel sent SIGKILL, so neither preStop nor the SIGTERM handler ran."
   check "container was OOM killed" OOMKilled "$(last_reason)"
   echo
 
   capture "$LAB_DIR" fixed-oom-killed-log k -n "$NS" logs "$POD" -c agent --previous --tail=3
-  show "The dead container's last lines. Periodic checkpoints and then nothing, no hook, no handler."
+  show "The dead container's last lines show periodic checkpoints. Neither preStop nor the SIGTERM handler ran."
   check "the killed container never ran preStop or SIGTERM" 0 \
     "$(k -n "$NS" logs "$POD" -c agent --previous | grep -cE 'reason=(prestop|sigterm)' || true)"
   echo
