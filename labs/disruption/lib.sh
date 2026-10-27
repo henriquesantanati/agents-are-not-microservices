@@ -14,7 +14,7 @@ step_of() { k -n "$NS" exec "$POD" -c agent -- python3 /app/agent.py status; }
 first_log_line() { k -n "$NS" logs "$POD" -c agent 2>/dev/null | sed -n 1p; }
 restarts_of() { k -n "$NS" get pod "$POD" -o jsonpath='{.status.containerStatuses[0].restartCount}'; }
 started_at() { k -n "$NS" get pod "$POD" -o jsonpath='{.status.containerStatuses[0].state.running.startedAt}'; }
-last_reason() { k -n "$NS" get pod "$POD" -o jsonpath='{.status.containerStatuses[0].lastState.terminated.reason}'; }
+last_exit_code() { k -n "$NS" get pod "$POD" -o jsonpath='{.status.containerStatuses[0].lastState.terminated.exitCode}'; }
 checkpoint_mode() { k -n "$NS" get statefulset agent -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="CHECKPOINT")].value}' 2>/dev/null; }
 
 step_at_least() { local s; s="$(step_of 2>/dev/null)"; (( ${s:-0} >= $1 )); }
@@ -166,8 +166,10 @@ observe_fixed() {
 
   capture "$LAB_DIR" fixed-oom-last-state k -n "$NS" get pod "$POD" \
     -o jsonpath='{.status.containerStatuses[0].lastState.terminated}{"\n"}'
-  show "OOMKilled, exit code 137. The kernel sent SIGKILL, so neither preStop nor the SIGTERM handler ran."
-  check "container was OOM killed" OOMKilled "$(last_reason)"
+  show "Exit code 137 is SIGKILL. The kernel killed the container at its memory limit, so neither preStop nor the SIGTERM handler ran."
+  # The check reads the exit code. For this same kill the reason field has read OOMKilled on
+  # some runs and Error on others.
+  check "container was killed with SIGKILL" 137 "$(last_exit_code)"
   echo
 
   capture "$LAB_DIR" fixed-oom-killed-log k -n "$NS" logs "$POD" -c agent --previous --tail=3
