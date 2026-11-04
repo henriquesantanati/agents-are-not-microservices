@@ -5,6 +5,10 @@ through. Kubernetes offers three things that look like protection, a PodDisrupti
 a long grace period and a preStop hook, and none of them keeps the work. Only a checkpoint
 does, and only the periodic one covers every way a pod can die.
 
+![What breaks: the PDB never protects the work](https://github.com/henriquesantanati/agents-are-not-microservices/releases/download/kubecon-na-2026/disruption-what-breaks.gif)
+
+![The pattern: state outlives the pod](https://github.com/henriquesantanati/agents-are-not-microservices/releases/download/kubecon-na-2026/disruption-the-pattern.gif)
+
 ## The problem
 
 A PodDisruptionBudget gates one thing, the eviction API. `kubectl drain`, the cluster

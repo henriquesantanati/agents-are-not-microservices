@@ -4,6 +4,10 @@ An agent answers by calling a tool and delegating a step to another agent. Traci
 means the context has to survive two hops, MCP and A2A, and the trace has to survive the
 pod. Neither is free, and even when both work the trace can hold no error and the answer can be wrong.
 
+![What breaks: a wrong answer with no error](https://github.com/henriquesantanati/agents-are-not-microservices/releases/download/kubecon-na-2026/observability-what-breaks.gif)
+
+![The pattern: put a score on the trace](https://github.com/henriquesantanati/agents-are-not-microservices/releases/download/kubecon-na-2026/observability-the-pattern.gif)
+
 ## The problem
 
 The MCP hop is specified. SEP-414 and the OpenTelemetry MCP conventions put the context in

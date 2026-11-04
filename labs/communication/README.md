@@ -5,6 +5,10 @@ behind a Service. Two replicas, no session affinity, and every call lands wherev
 kube-proxy sends it. Whether that works depends on what the server kept from the last
 call, and on what a retry costs.
 
+![What breaks: a retry repeats the action](https://github.com/henriquesantanati/agents-are-not-microservices/releases/download/kubecon-na-2026/communication-what-breaks.gif)
+
+![The pattern: every action has a key](https://github.com/henriquesantanati/agents-are-not-microservices/releases/download/kubecon-na-2026/communication-the-pattern.gif)
+
 ## The problem
 
 MCP dropped sessions in the `2026-07-28` revision. A server that keeps no state of its
