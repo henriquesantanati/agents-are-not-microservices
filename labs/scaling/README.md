@@ -5,6 +5,10 @@ while it runs. The tier that saturates is therefore the dependency, and the auto
 watching the agent's CPU. This lab shows an HPA that never fires while a queue grows
 without limit, and a KEDA ScaledObject on the dependency's own queue that drains it.
 
+![What breaks: the HPA scales on agent CPU](https://github.com/henriquesantanati/agents-are-not-microservices/releases/download/kubecon-na-2026/scaling-what-breaks.gif)
+
+![The pattern: scale each tier on its own signal](https://github.com/henriquesantanati/agents-are-not-microservices/releases/download/kubecon-na-2026/scaling-the-pattern.gif)
+
 ## The problem
 
 An agent waiting on a dependency burns almost no CPU, so a CPU autoscaler on the agent

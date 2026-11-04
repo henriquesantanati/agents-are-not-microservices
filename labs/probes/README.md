@@ -6,6 +6,10 @@ the same `/health`. For a web service that is fine. For an agent that works on o
 for minutes, `/health` gives the wrong answer about when it can take work and when it
 needs a restart.
 
+![What breaks: one /health for both probes](https://github.com/henriquesantanati/agents-are-not-microservices/releases/download/kubecon-na-2026/probes-what-breaks.gif)
+
+![The pattern: one probe per question](https://github.com/henriquesantanati/agents-are-not-microservices/releases/download/kubecon-na-2026/probes-the-pattern.gif)
+
 ## The problem
 
 An agent that is busy still answers `/health` with 200. Kubernetes reads that as alive and
