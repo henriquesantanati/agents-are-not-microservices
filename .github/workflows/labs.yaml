@@ -13,7 +13,7 @@ jobs:
     outputs:
       labs: ${{ steps.pick.outputs.labs }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
       - id: pick
         env:
@@ -43,10 +43,10 @@ jobs:
     env:
       ANM_RUNTIME: docker
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: helm/kind-action@v1
         with: { install_only: true }
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5
       - run: labs/${{ matrix.lab }}/run.sh
       - name: scripts numbered 50 and up
         env: { LAB: "${{ matrix.lab }}" }
